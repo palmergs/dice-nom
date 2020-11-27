@@ -236,10 +236,20 @@ impl PoolOp {
     /// assert_eq!(pool.sum(), 11);
     /// 
     /// let mut pool = Pool{ values: vec![val1, val2, val3] };
+    /// let old_sum = pool.sum();
     /// PoolOp::Advantage.apply_all(&mut pool);
+    /// assert_eq!(pool.count(), 6);
+    /// assert_eq!(pool.bonus(), 3);
+    /// assert_eq!(pool.kept(), 3);
+    /// assert!(old_sum <= pool.sum());
     /// 
     /// let mut pool = Pool{ values: vec![val1, val2, val3] };
+    /// let old_sum = pool.sum();
     /// PoolOp::Disadvantage.apply_all(&mut pool);
+    /// assert_eq!(pool.count(), 6);
+    /// assert_eq!(pool.bonus(), 3);
+    /// assert_eq!(pool.kept(), 3);
+    /// assert!(old_sum >= pool.sum());
     /// 
     /// let mut pool = Pool{ values: vec![val1, val2, val3] };
     /// PoolOp::BestGroup.apply_all(&mut pool);
