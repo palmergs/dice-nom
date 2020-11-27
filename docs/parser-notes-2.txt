@@ -1,0 +1,29 @@
+gen  := succ > nums | succ < nums | succ = nums | succ
+succ := pare {constant, constant} | pare {constant} | pare
+pare := ( expr ) | expr
+expr := hits + expr | hits - expr | hits
+hits := term top
+term := pool op | pool | num
+pool := num D range | D range
+num  := [0-9]+
+rng  := nums | % | %% | %%%
+top  := [ num ] | 
+        ( num )
+op   := ! |             // reroll pool if all are rng
+        ! num |         // reroll pool if all are >= num
+        !! |            // reroll poll until any are < rng
+        !! num |        // reroll poll until any are < num
+        * |             // reroll any >= rng
+        * num |         // reroll any >= num
+        ** |            // reroll any until < rng
+        ** num |        // reroll any until < num
+        ++ |            // add 1 to each 
+        ++ num |        // add num to each
+        -- |            // subtract 1 from each
+        -- num |        // subtract num from each
+        ~ num |         // take middle num from pool
+        ` num |         // take lowest num from pool
+        ^ num |         // take highest num from pool
+        DIS |           // roll pool twice, keep lowest
+        ADV |           // roll pool twice, keep highest
+        Y               // keep largest group, highest value of group if tie

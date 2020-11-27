@@ -4,7 +4,13 @@ version = "0.1.0"
 authors = ["Galen Palmer <palmergs@gmail.com>"]
 edition = "2018"
 
+[[bin]]
+name = "roll"
+path = "src/bin/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 nom = "6.0"
+clap = "*"
+rand = "0.7.3"
