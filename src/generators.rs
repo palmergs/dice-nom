@@ -199,6 +199,7 @@ impl PoolOp {
     /// let val2 = Value{ value: 5, range: 6, add: 0, constant: false, bonus: false, keep: true };
     /// let val3 = Value{ value: 1, range: 6, add: 0, constant: false, bonus: false, keep: true };
     /// let val4 = Value{ value: 6, range: 6, add: 0, constant: false, bonus: false, keep: true };
+    /// let val5 = Value{ value: 1, range: 6, add: 0, constant: false, bonus: false, keep: true };
     /// 
     /// let mut pool = Pool{ values: vec![val1, val2] };
     /// PoolOp::Explode(Some(5)).apply_all(&mut pool);
@@ -251,8 +252,16 @@ impl PoolOp {
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum >= pool.sum());
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3] };
+    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4, val5] };
     /// PoolOp::BestGroup.apply_all(&mut pool);
+    /// assert_eq!(pool.count(), 5);
+    /// assert_eq!(pool.bonus(), 0);
+    /// assert_eq!(pool.kept(), 2);
+    /// assert_eq!(pool.sum(), 12);
+    /// 
+    /// let mut pool = Pool{ values: vec![val2, val3, val4, val5] };
+    /// PoolOp::BestGroup.apply_all(&mut pool);
+    /// assert_eq!(pool.sum(), 2);
     /// ```
     pub fn apply_all(&self, pool: &mut Pool) {
         let cnt = pool.count();
@@ -327,9 +336,70 @@ impl PoolOp {
                 }                
             }
 
-            PoolOp::Advantage => (),
-            PoolOp::Disadvantage => (),
-            PoolOp::BestGroup => (),
+            PoolOp::Advantage => {
+                let old = pool.sum();
+                for _ in 0..cnt {
+                    let roll = Value::random(pool.range(), true);
+                    pool.values.push(roll);
+                }
+
+                if pool.sum() > old * 2 {
+                    for idx in 0..cnt {
+                        pool.values[idx].keep = false;
+                    }
+                } else {
+                    for idx in cnt..cnt * 2 {
+                        pool.values[idx].keep = false;
+                    }
+                }
+            }
+
+            PoolOp::Disadvantage => {
+                let old = pool.sum();
+                for _ in 0..cnt {
+                    let roll = Value::random(pool.range(), true);
+                    pool.values.push(roll);
+                }
+
+                if pool.sum() > old * 2 {
+                    for idx in cnt..cnt * 2 {
+                        pool.values[idx].keep = false;
+                    }
+                } else {
+                    for idx in 0..cnt {
+                        pool.values[idx].keep = false;
+                    }
+                }
+            }
+
+            PoolOp::BestGroup => {
+                pool.values.sort_by(|a, b| b.value.cmp(&a.value));
+                let mut last_val = 0;
+                let mut max_val = 0;
+                let mut max_run = 0;
+                let mut curr_run = 0;
+                for idx in 0..cnt {
+                    let val = pool.values[idx];
+                    if val.keep {
+                        if last_val == val.value {
+                            curr_run += 1;
+                            if curr_run > max_run {
+                                max_run = curr_run;
+                                max_val = last_val;
+                            }
+                        } else {
+                            last_val = val.value;
+                            curr_run = 0;
+                        }
+                    }
+                }
+
+                for v in &mut pool.values {
+                    if v.value != max_val {
+                        v.keep = false;
+                    }
+                }
+            },
             _ => ()
         }
     }
