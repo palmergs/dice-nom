@@ -4,9 +4,9 @@ use rand::prelude::*;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Value {
     pub value: i32,
-    pub min: i32,
-    pub max: i32,
+    pub range: i32,
     pub add: i32,
+    pub constant: bool,
     pub bonus: bool,
     pub keep: bool,
 
@@ -24,17 +24,21 @@ impl fmt::Display for Value {
 
 impl Value {
     pub fn constant(value: i32) -> Value {
-        Value{ value, min: value, max: value, add: 0, bonus: false, keep: true, sum: value }
+        Value{ value, range: value, add: 0, constant: true, bonus: false, keep: true, sum: value }
     }
 
     pub fn random(range: i32, bonus: bool) -> Value {
         let mut rng = rand::thread_rng();
         let value = rng.gen_range(1, range + 1);
-        Value{ value, min: range, max: range, add: 0, bonus, keep: true, sum: value }
+        Value{ value, range, constant: false, add: 0, bonus, keep: true, sum: value }
     }
 
     pub fn is_const(&self) -> bool {
-        self.min == self.max
+        self.constant
+    }
+
+    pub fn is_random(&self) -> bool {
+        !self.is_const()
     }
 }
 
@@ -64,20 +68,6 @@ impl fmt::Display for Pool {
 impl Pool {
     pub fn new() -> Pool {
         Pool{ values: vec![], kept: 0, bonus: 0, sum: 0 }
-    }
-
-    pub fn add_const(&mut self, value: i32) {
-        self.values.push(Value::constant(value));
-    }
-
-    pub fn add_random(&mut self, range: i32, bonus: bool) {
-        let r = Value::random(range, bonus);
-        self.values.push(Value::random(range, bonus));
-        self.kept += 1;
-        self.sum += r.sum;
-        if bonus {
-            self.bonus += 1;
-        }
     }
 }
 

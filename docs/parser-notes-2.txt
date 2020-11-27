@@ -1,8 +1,8 @@
 gen  := succ > nums | succ < nums | succ = nums | succ
-succ := pare {constant, constant} | pare {constant} | pare
+succ := hits {constant, constant} | hits {constant} | hits
+hits := pare top | pare
 pare := ( expr ) | expr
-expr := hits + expr | hits - expr | hits
-hits := term top
+expr := term + expr | term - expr | term
 term := pool op | pool | num
 pool := num D range | D range
 num  := [0-9]+

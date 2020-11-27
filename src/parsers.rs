@@ -5,15 +5,18 @@ use nom::{
     bytes::complete::{tag, is_a},
     character::complete::{char, space0, digit0, digit1},
     combinator::opt,
-    sequence::{tuple, delimited, separated_pair},
+    multi::fold_many1,
+    sequence::{tuple, preceded, delimited, separated_pair},
     branch::alt,
 };
 
 use super::generators::{
     Generator,
     SuccGenerator,
-    ExprGenerator,
     HitsGenerator,
+    ExprGenerator,
+    ArithOp,
+    ArithTermGenerator,
     TermGenerator,
     PoolGenerator,
     SuccessOp,
@@ -22,6 +25,41 @@ use super::generators::{
     TargetOp,
 };
 
+/// generator_parser is the top level parser and builds a generator
+/// that can compare the relative values of two sub expressions.
+/// 
+/// * Examples
+/// 
+/// ```
+/// use dice_nom::parsers::generator_parser;
+/// use dice_nom::generators::*;
+/// let (input, gen) = generator_parser("3d8").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(gen.op, None);
+/// 
+/// let (input, gen) = generator_parser("3d8 > 4d6").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(gen.op, Some(ComparisonOp::GT(
+///     SuccGenerator{ 
+///         hits: HitsGenerator{
+///             expr: ExprGenerator{
+///                 terms: vec![
+///                     ArithTermGenerator{
+///                         op: ArithOp::ImplicitAdd,
+///                         term: TermGenerator::Pool(PoolGenerator {
+///                             count: 4,
+///                             range: 6,
+///                             op: None    
+///                         })
+///                     }
+///                 ]
+///             },
+///             op: None
+///         },
+///         op: None
+///     }
+/// )));
+/// ```
 pub fn generator_parser(input: &str) -> IResult<&str, Generator> {
     match tuple((succ_gen_parser, opt(comparison_op_parser)))(input) {
         Ok((input, (succ, op))) => Ok((input, Generator{ succ, op })),
@@ -29,12 +67,58 @@ pub fn generator_parser(input: &str) -> IResult<&str, Generator> {
     }
 }
 
-fn succ_gen_parser(input: &str) -> IResult<&str, SuccGenerator> {
+/// succ_parser builds a generator from the input that returns the 
+/// level of success of the sum of the rolled dice.
+/// 
+/// * Examples
+/// 
+/// ```
+/// use dice_nom::parsers::succ_gen_parser;
+/// use dice_nom::generators::*;
+/// let (input, succ) = succ_gen_parser("3d8 {15}").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(succ.op, Some(SuccessOp::TargetSucc(15)));
+/// 
+/// let (input, succ) = succ_gen_parser("(4d4** + 5 + 2d12)").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(succ.op, None);
+/// 
+/// // roll 10d6, count those that rolled 4 or less, check to see if 3 or more.
+/// let (input, succ) = succ_gen_parser("10d6(4){3, 2}").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(succ.op, Some(SuccessOp::TargetSuccNext(3, 2)));
+/// ```
+pub fn succ_gen_parser(input: &str) -> IResult<&str, SuccGenerator> {
     match tuple((
-        expr_parser, 
+        hits_parser, 
         opt(alt((succ_op_parser, succ_next_op_parser)))
     ))(input) {
-        Ok((input, (expr, op))) => Ok((input, SuccGenerator{ expr, op })),
+        Ok((input, (hits, op))) => Ok((input, SuccGenerator{ hits, op })),
+        Err(e) => Err(e)
+    }
+}
+
+/// hits_parser generates an expression that returns the number of
+/// times the rolled dice exceed (or are below) an expected value.
+/// 
+/// * Examples
+/// 
+/// ```
+/// use dice_nom::parsers::hits_parser;
+/// use dice_nom::generators::*;
+/// let (input, hits) = hits_parser("( 2d4 + 3d6 + 2d8 )[4]").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(hits.expr.terms.len(), 3);
+/// assert_eq!(hits.op, Some(TargetOp::TargetHigh(4)));
+/// 
+/// let (input, hits) = hits_parser("d4 d8 d10 d12 (3)").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(hits.expr.terms.len(), 4);
+/// assert_eq!(hits.op, Some(TargetOp::TargetLow(3)));
+/// ```
+pub fn hits_parser(input: &str) -> IResult<&str, HitsGenerator> {
+    match tuple((pare_parser, opt(tgt_op_parser)))(input) {
+        Ok((input, (expr, op))) => Ok((input, HitsGenerator{ expr, op })),
         Err(e) => Err(e)
     }
 }
@@ -50,23 +134,88 @@ fn pare_parser(input: &str) -> IResult<&str, ExprGenerator> {
     ))(input)
 }
 
-fn expr_parser(input: &str) -> IResult<&str, ExprGenerator> {
-   Ok((input, ExprGenerator{})) 
-}
-
-fn hits_parser(input: &str) -> IResult<&str, HitsGenerator> {
-    match tuple((term_parser, opt(tgt_op_parser)))(input) {
-        Ok((input, (term, op))) => Ok((input, HitsGenerator{ term, op })),
+/// expr_parser builds a vector of terms
+/// 
+/// * Examples
+/// 
+/// ```
+/// use dice_nom::parsers::expr_parser;
+/// use dice_nom::generators::*;
+/// let (input, expr) = expr_parser("3d4 + 2d6 - d8").unwrap();
+/// assert_eq!(input, "");
+/// assert_eq!(expr.terms.len(), 3);
+/// assert_eq!(expr.terms[0].op, ArithOp::ImplicitAdd);
+/// assert_eq!(expr.terms[1].op, ArithOp::Add);
+/// assert_eq!(expr.terms[2].op, ArithOp::Sub);
+/// ```
+pub fn expr_parser(input: &str) -> IResult<&str, ExprGenerator> {
+    match fold_many1(
+        arith_term_parser,
+        Vec::new(),
+        |mut acc: Vec<_>, arith_term| {
+            acc.push(arith_term);
+            acc
+        }
+    )(input) {
+        Ok((input, terms)) => Ok((input, ExprGenerator{ terms })),
         Err(e) => Err(e)
     }
 }
 
-fn term_parser(input: &str) -> IResult<&str, TermGenerator> {
+fn implicit_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
+    match preceded(space0, term_parser)(input) {
+        Ok((input, term)) => Ok((input, ArithTermGenerator{ op: ArithOp::ImplicitAdd, term: term })),
+        Err(e) => Err(e)
+    }
+}
+
+fn add_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
+    match preceded(delimited(space0, char('+'), space0), term_parser)(input) {
+        Ok((input, term)) => Ok((input, ArithTermGenerator{ op: ArithOp::Add, term: term })),
+        Err(e) => Err(e)
+    }
+}
+
+fn sub_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
+    match preceded(delimited(space0, char('-'), space0), term_parser)(input) {
+        Ok((input, term)) => Ok((input, ArithTermGenerator{ op: ArithOp::Sub, term: term })),
+        Err(e) => Err(e)
+    }
+}
+
+fn arith_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
+    alt((implicit_term_parser, add_term_parser, sub_term_parser))(input)
+}
+
+/// term_parser builds a TermGenerator from the given input.
+/// 
+/// # Examples
+/// 
+/// ```
+/// use dice_nom::parsers::term_parser;
+/// use dice_nom::generators::{TermGenerator, PoolGenerator, PoolOp};
+/// assert_eq!(term_parser("10 "), Ok((" ", TermGenerator::Constant(10))));
+/// assert_eq!(term_parser("2d6**"), Ok((
+///     "",
+///     TermGenerator::Pool(PoolGenerator{
+///         count: 2,
+///         range: 6,
+///         op: Some(PoolOp::ExplodeEachUntil(None)) }))
+/// ));
+/// assert_eq!(term_parser("3d10!!4"), Ok((
+///     "", 
+///     TermGenerator::Pool(PoolGenerator{
+///         count: 3, 
+///         range: 10, 
+///         op: Some(PoolOp::ExplodeUntil(Some(4))) }))
+/// ));
+/// ```
+pub fn term_parser(input: &str) -> IResult<&str, TermGenerator> {
     alt((pool_parser, const_parser))(input)
 }
 
 fn const_parser(input: &str) -> IResult<&str, TermGenerator> {
-    match digit1(input) {
+    match preceded(space0, digit1)(input) {
         Ok((input, chars)) => Ok((
             input, 
             TermGenerator::Constant(chars.parse::<i32>().unwrap())
@@ -127,7 +276,7 @@ pub fn range_parser(input: &str) -> IResult<&str, i32> {
 
 fn tgt_high_parser(input: &str) -> IResult<&str, TargetOp> {
     match delimited(
-        tuple((char('['), space0)),
+        tuple((space0, char('['), space0)),
         digit1, 
         tuple((space0, char(']')))
     )(input) {
@@ -141,7 +290,7 @@ fn tgt_high_parser(input: &str) -> IResult<&str, TargetOp> {
 
 fn tgt_low_parser(input: &str) -> IResult<&str, TargetOp> {
     match delimited(
-        tuple((char('('), space0)),
+        tuple((space0, char('('), space0)),
         digit1, 
         tuple((space0, char(')')))
     )(input) {
@@ -181,7 +330,7 @@ pub fn tgt_op_parser(input: &str) -> IResult<&str, TargetOp> {
 /// ```
 pub fn succ_op_parser(input: &str) -> IResult<&str, SuccessOp> {
     match delimited(
-        tuple((char('{'), space0)), 
+        tuple((space0, char('{'), space0)), 
         digit1, 
         tuple((space0, char('}')))
     )(input) {
@@ -231,10 +380,10 @@ pub fn succ_next_op_parser(input: &str) -> IResult<&str, SuccessOp> {
 /// ```
 pub fn pool_op_parser(input: &str) -> IResult<&str, PoolOp> {
     alt((
-        explode_op_parser, 
         explode_until_op_parser,
-        explode_each_op_parser,
+        explode_op_parser, 
         explode_each_until_op_parser,
+        explode_each_op_parser,
         add_op_parser,
         sub_op_parser,
         take_mid_op_parser,
@@ -361,19 +510,21 @@ fn command_op_parser(input: &str) -> IResult<&str, PoolOp> {
 
 fn comparison_op_parser(input: &str) -> IResult<&str, ComparisonOp> {
     match alt((
-        tuple((tag(">="), succ_gen_parser)),
-        tuple((tag("<="), succ_gen_parser)),
-        tuple((tag(">"), succ_gen_parser)),
-        tuple((tag("<"), succ_gen_parser)),
-        tuple((tag("="), succ_gen_parser))
+        tuple((delimited(space0, tag("<=>"), space0), succ_gen_parser)),
+        tuple((delimited(space0, tag(">="), space0), succ_gen_parser)),
+        tuple((delimited(space0, tag("<="), space0), succ_gen_parser)),
+        tuple((delimited(space0, tag(">"), space0), succ_gen_parser)),
+        tuple((delimited(space0, tag("<"), space0), succ_gen_parser)),
+        tuple((delimited(space0, tag("="), space0), succ_gen_parser)),
     ))(input) {
         Ok((input, (tag, succ))) => match tag {
-            ">=" => Ok((input, ComparisonOp::GE(succ))),
-            "<=" => Ok((input, ComparisonOp::LE(succ))),
-            ">"  => Ok((input, ComparisonOp::GT(succ))),
-            "<"  => Ok((input, ComparisonOp::LT(succ))),
-            "="  => Ok((input, ComparisonOp::EQ(succ))),
-            _    => panic!("unexpected tag")
+            "<=>" => Ok((input, ComparisonOp::CMP(succ))),
+            ">="  => Ok((input, ComparisonOp::GE(succ))),
+            "<="  => Ok((input, ComparisonOp::LE(succ))),
+            ">"   => Ok((input, ComparisonOp::GT(succ))),
+            "<"   => Ok((input, ComparisonOp::LT(succ))),
+            "="   => Ok((input, ComparisonOp::EQ(succ))),
+            _     => panic!("unexpected tag")
         }
         Err(e) => Err(e)
     }
