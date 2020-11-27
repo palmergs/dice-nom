@@ -8,29 +8,42 @@ pub struct Value {
     pub add: i32,
     pub constant: bool,
     pub bonus: bool,
-    pub keep: bool,
-
-    pub sum: i32
+    pub keep: bool
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.bonus {
-            false => write!(f, "{}", self.sum),
-            true => write!(f, "{}*", self.sum),
+        if self.add == 0 {
+            match self.bonus {
+                false => write!(f, "{}", self.value),
+                true => write!(f, "{}*", self.value),
+            }
+        } else {
+            match self.bonus {
+                false => write!(f, "{}{:+}", self.value, self.add),
+                true => write!(f, "{}{:+}*", self.value, self.add),
+            }
         }
     }
 }
 
 impl Value {
     pub fn constant(value: i32) -> Value {
-        Value{ value, range: value, add: 0, constant: true, bonus: false, keep: true, sum: value }
+        Value{ value, range: value, add: 0, constant: true, bonus: false, keep: true }
     }
 
     pub fn random(range: i32, bonus: bool) -> Value {
         let mut rng = rand::thread_rng();
         let value = rng.gen_range(1, range + 1);
-        Value{ value, range, constant: false, add: 0, bonus, keep: true, sum: value }
+        Value{ value, range, constant: false, add: 0, bonus, keep: true }
+    }
+
+    pub fn sum(&self) -> i32 {
+        if self.keep {
+            self.value + self.add
+        } else {
+            0
+        }
     }
 
     pub fn is_const(&self) -> bool {
@@ -42,12 +55,9 @@ impl Value {
     }
 }
 
+#[derive(Debug)]
 pub struct Pool {
     pub values: Vec<Value>,
-
-    pub kept: i32,
-    pub bonus: i32,
-    pub sum: i32
 }
 
 impl fmt::Display for Pool {
@@ -67,7 +77,36 @@ impl fmt::Display for Pool {
 
 impl Pool {
     pub fn new() -> Pool {
-        Pool{ values: vec![], kept: 0, bonus: 0, sum: 0 }
+        Pool{ values: vec![] }
+    }
+
+    pub fn range(&self) -> i32 {
+        if self.values.len() == 0 {
+            0
+        } else {
+            self.values.iter().filter(|&v| !v.constant).map(|&v| v.range).max().unwrap()
+        }
+    }
+
+    pub fn count(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn constants(&self) -> usize {
+        self.values.iter().filter(|&v| v.constant ).count()
+    }
+
+    pub fn kept(&self) -> usize {
+        self.values.iter().filter(|&v| v.keep ).count()
+    }
+
+    pub fn bonus(&self) -> usize {  
+        self.values.iter().filter(|&v| v.bonus ).count()
+    }
+
+    pub fn sum(&self) -> i32 {
+        self.values.iter().map(|&v| v.sum() ).sum()
     }
 }
+
 
