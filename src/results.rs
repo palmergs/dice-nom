@@ -34,16 +34,9 @@ pub struct Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.add == 0 {
-            match self.bonus {
-                false => write!(f, "{}", self.value),
-                true => write!(f, "{}*", self.value),
-            }
-        } else {
-            match self.bonus {
-                false => write!(f, "{}{:+}", self.value, self.add),
-                true => write!(f, "{}{:+}*", self.value, self.add),
-            }
+        match self.bonus {
+            false => write!(f, "{}", self.sum),
+            true => write!(f, "{}*", self.sum),
         }
     }
 }
@@ -105,7 +98,7 @@ impl Value {
             if hit {
                 self.sum = self.mul;
             } else {
-                self.sum = self.mul * (self.value + self.add);
+                self.sum = 0;
             }
         }
     }
@@ -136,7 +129,7 @@ impl fmt::Display for Pool {
                 write!(f, ", {}", v)?;
             }
         }
-        write!(f, "")
+        write!(f, " = {}", self.sum())
     }
 }
 
@@ -173,8 +166,6 @@ impl Pool {
     }
 
     pub fn bonus(&self) -> usize {
-        println!("self.value = {:?}", self.values);
-        println!("self.bonus = {:?}", self.values.iter().filter(|&v| v.is_bonus() ));
         self.values.iter().filter(|&v| v.is_bonus()).count()
     }
 

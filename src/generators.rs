@@ -1,10 +1,20 @@
-
+use std::fmt;
 use super::results::{Results, Pool, Value};
 
 #[derive(Debug, PartialEq)]
 pub struct Generator {
     pub succ: SuccGenerator,
     pub op: Option<ComparisonOp>,
+}
+
+impl fmt::Display for Generator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.succ)?;
+        if let Some(op) = &self.op {
+            write!(f, " {}", op)?;
+        }
+        write!(f, "")
+    }
 }
 
 impl Generator {
@@ -118,10 +128,33 @@ pub enum ComparisonOp {
     CMP(SuccGenerator),
 }
 
+impl fmt::Display for ComparisonOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ComparisonOp::GT(succ) => write!(f, "> {}", succ),
+            ComparisonOp::GE(succ) => write!(f, ">= {}", succ),
+            ComparisonOp::LT(succ) => write!(f, "< {}", succ),
+            ComparisonOp::LE(succ) => write!(f, "<= {}", succ),
+            ComparisonOp::EQ(succ) => write!(f, "= {}", succ),
+            ComparisonOp::CMP(succ) => write!(f, "<=> {}", succ),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct SuccGenerator {
     pub hits: HitsGenerator,
     pub op: Option<SuccessOp>,
+}
+
+impl fmt::Display for SuccGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.hits)?;
+        if let Some(op) = &self.op {
+            write!(f, "{}", op)?;
+        }
+        write!(f, "")
+    }
 }
 
 impl SuccGenerator {
@@ -157,10 +190,29 @@ pub enum SuccessOp {
     TargetSuccNext(i32, i32),
 }
 
+impl fmt::Display for SuccessOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SuccessOp::TargetSucc(n) => write!(f, "{{{}}}", n),
+            SuccessOp::TargetSuccNext(n, m) => write!(f, "{{{}, {}}}", n, m)
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct HitsGenerator {
     pub expr: ExprGenerator,
     pub op: Option<TargetOp>,
+}
+
+impl fmt::Display for HitsGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.expr)?;
+        if let Some(op) = &self.op {
+            write!(f, "{}", op)?;
+        }
+        write!(f, "")
+    }
 }
 
 impl HitsGenerator {
@@ -218,9 +270,27 @@ pub enum TargetOp {
     TargetLow(i32),
 }
 
+impl fmt::Display for TargetOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TargetOp::TargetHigh(n) => write!(f, "[{}]", n),
+            TargetOp::TargetLow(n) => write!(f, "({})", n),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct ExprGenerator {
     pub terms: Vec<ArithTermGenerator>
+}
+
+impl fmt::Display for ExprGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for t in self.terms.iter() {
+            write!(f, "{}", t)?;
+        }
+        write!(f, "")
+    }
 }
 
 impl ExprGenerator {
@@ -240,10 +310,26 @@ pub enum ArithOp {
     Sub,
 }
 
+impl fmt::Display for ArithOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ArithOp::ImplicitAdd => write!(f, ""),
+            ArithOp::Add => write!(f, " + "),
+            ArithOp::Sub => write!(f, " - "),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct ArithTermGenerator {
     pub op: ArithOp,
     pub term: TermGenerator,
+}
+
+impl fmt::Display for ArithTermGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.op, self.term)
+    }
 }
 
 impl ArithTermGenerator {
@@ -267,6 +353,15 @@ pub enum TermGenerator {
     Constant(i32)
 }
 
+impl fmt::Display for TermGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TermGenerator::Pool(pg) => write!(f, "{}", pg),
+            TermGenerator::Constant(n) => write!(f, "{}", n)
+        }
+    }
+}
+
 impl TermGenerator {
     pub fn generate(&self) -> Pool {
         match self {
@@ -281,6 +376,16 @@ pub struct PoolGenerator {
     pub count: i32,
     pub range: i32,
     pub op: Option<PoolOp>
+}
+
+impl fmt::Display for PoolGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}d{}", self.count, self.range)?;
+        if let Some(op) = &self.op {
+            write!(f, "{}", op)?;
+        }
+        write!(f, "")
+    }
 }
 
 impl PoolGenerator {
@@ -328,6 +433,55 @@ pub enum PoolOp {
     Disadvantage,
     Advantage,
     BestGroup,
+}
+
+impl fmt::Display for PoolOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PoolOp::Explode(n) => if let Some(n) = *n {
+                write!(f, "!{}", n)
+            } else {
+                write!(f, "!")
+            },
+
+            PoolOp::ExplodeUntil(n) => if let Some(n) = *n {
+                write!(f, "!!{}", n)
+            } else {
+                write!(f, "!!")
+            },
+
+            PoolOp::ExplodeEach(n) => if let Some(n) = *n {
+                write!(f, "*{}", n)
+            } else {
+                write!(f, "*")
+            },
+
+            PoolOp::ExplodeEachUntil(n) => if let Some(n) = *n {
+                write!(f, "**{}", n)
+            } else {
+                write!(f, "**")
+            },
+
+            PoolOp::AddEach(n) => if let Some(n) = *n {
+                write!(f, "++{}", n)
+            } else {
+                write!(f, "++")
+            },
+
+            PoolOp::SubEach(n) => if let Some(n) = *n {
+                write!(f, "--{}", n)
+            } else {
+                write!(f, "--")
+            },
+
+            PoolOp::TakeMid(n) => write!(f, "~{}", n),
+            PoolOp::TakeLow(n) => write!(f, "`{}", n),
+            PoolOp::TakeHigh(n) => write!(f, "^{}", n),
+            PoolOp::Disadvantage => write!(f, " DIS"),
+            PoolOp::Advantage => write!(f, " ADV"),
+            PoolOp::BestGroup => write!(f, "Y"),
+        }
+    }
 }
 
 impl PoolOp {
