@@ -1,10 +1,111 @@
 
-use super::results::{Pool, Value};
+use super::results::{Results, Pool, Value};
 
 #[derive(Debug, PartialEq)]
 pub struct Generator {
     pub succ: SuccGenerator,
     pub op: Option<ComparisonOp>,
+}
+
+impl Generator {
+    /// generate
+    /// 
+    /// * Example
+    /// 
+    /// ```
+    /// use dice_nom::generators::*;
+    /// use dice_nom::results::*;
+    /// let gen = Generator{
+    ///     succ: SuccGenerator{
+    ///         hits: HitsGenerator{ 
+    ///             expr: ExprGenerator{
+    ///                 terms: vec![ArithTermGenerator{
+    ///                     op: ArithOp::ImplicitAdd,
+    ///                     term: TermGenerator::Pool(PoolGenerator{
+    ///                         count: 12,
+    ///                         range: 6,
+    ///                         op: None
+    ///                     })
+    ///                 }]
+    ///             },
+    ///             op: None
+    ///         },
+    ///         op: None
+    ///     },
+    ///     op: None 
+    /// };
+    /// let pool = gen.generate();
+    /// ```
+    pub fn generate(&self) -> Results {
+        let lhs = self.succ.generate();
+        let (rhs, value) = match &self.op {
+            Some(op) => match op {
+                ComparisonOp::GT(rhs) => {
+                    let rhs = rhs.generate();
+                    let val = if lhs.sum() > rhs.sum() {
+                        1
+                    } else {
+                        0
+                    };
+                    (Some(rhs), val)
+                }
+
+                ComparisonOp::GE(rhs) => {
+                    let rhs = rhs.generate();
+                    let val = if lhs.sum() >= rhs.sum() {
+                        1
+                    } else {
+                        0
+                    };
+                    (Some(rhs), val)
+                }
+                
+                ComparisonOp::LT(rhs) => {
+                    let rhs = rhs.generate();
+                    let val = if lhs.sum() < rhs.sum() {
+                        1
+                    } else {
+                        0
+                    };
+                    (Some(rhs), val)
+                }
+                
+                ComparisonOp::LE(rhs) => {
+                    let rhs = rhs.generate();
+                    let val = if lhs.sum() <= rhs.sum() {
+                        1
+                    } else {
+                        0
+                    };
+                    (Some(rhs), val)
+                }    
+
+                ComparisonOp::EQ(rhs) => {
+                    let rhs = rhs.generate();
+                    let val = if lhs.sum() == rhs.sum() {
+                        1
+                    } else {
+                        0
+                    };
+                    (Some(rhs), val)
+                }                
+                
+                ComparisonOp::CMP(rhs) => {
+                    let rhs = rhs.generate();
+                    let val = if lhs.sum() < rhs.sum() {
+                        -1
+                    } else if lhs.sum() > rhs.sum() {
+                        1
+                    }else {
+                        0
+                    };
+                    (Some(rhs), val)
+                }                 
+            },
+            None => (None, 0)
+        };
+        Results{ lhs, rhs, value }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -23,6 +124,29 @@ pub struct SuccGenerator {
     pub op: Option<SuccessOp>,
 }
 
+impl SuccGenerator {
+    pub fn generate(&self) -> Pool {
+        let mut pool = self.hits.generate();
+        match &self.op {
+            Some(op) => match op {
+                SuccessOp::TargetSucc(n) => {
+                    if pool.sum() >= *n {
+                        pool.value = pool.sum() - n + 1;
+                    }
+                    pool
+                }
+                SuccessOp::TargetSuccNext(n, m) => {
+                    if pool.sum() >= *n {
+                        pool.value = ((pool.sum() - n) % m) + 1;
+                    }
+                    pool
+                }
+            },
+            None => pool
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum SuccessOp {
     TargetSucc(i32),
@@ -35,6 +159,53 @@ pub struct HitsGenerator {
     pub op: Option<TargetOp>,
 }
 
+impl HitsGenerator {
+    /// generate
+    /// 
+    /// * Example
+    /// 
+    /// ```
+    /// use dice_nom::generators::*;
+    /// use dice_nom::results::*;
+    /// let gen = HitsGenerator{ 
+    ///     expr: ExprGenerator{
+    ///         terms: vec![ArithTermGenerator{
+    ///             op: ArithOp::ImplicitAdd,
+    ///             term: TermGenerator::Pool(PoolGenerator{
+    ///                 count: 12,
+    ///                 range: 6,
+    ///                 op: None,
+    ///             })
+    ///         }]
+    ///     },
+    ///     op: Some(TargetOp::TargetHigh(4)) 
+    /// };
+    /// let pool = gen.generate();
+    /// // TODO: this assertion is a bit of a risk since there's a chance of no hits 
+    /// assert!(pool.hits() > 0); 
+    /// ```
+    pub fn generate(&self) -> Pool {
+        let mut pool = self.expr.generate();
+        match &self.op {
+            Some(op) => match op {
+                TargetOp::TargetHigh(n) => {
+                    for idx in 0..pool.count() {
+                        pool.values[idx].hit = pool.values[idx].sum() >= *n;
+                    }
+                    pool
+                }
+                TargetOp::TargetLow(n) => {
+                    for idx in 0..pool.count() {
+                        pool.values[idx].hit = pool.values[idx].sum() <= *n;
+                    }
+                    pool
+                }
+            }
+            None => pool
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum TargetOp {
     TargetHigh(i32),
@@ -44,6 +215,16 @@ pub enum TargetOp {
 #[derive(Debug, PartialEq)]
 pub struct ExprGenerator {
     pub terms: Vec<ArithTermGenerator>
+}
+
+impl ExprGenerator {
+    pub fn generate(&self) -> Pool {
+        let mut pool = Pool::new();
+        for t in self.terms.iter() {
+            pool.values.append(&mut t.generate().values);
+        }
+        pool
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -59,10 +240,34 @@ pub struct ArithTermGenerator {
     pub term: TermGenerator,
 }
 
+impl ArithTermGenerator {
+    pub fn generate(&self) -> Pool {
+        let mut pool = self.term.generate();
+        match &self.op {
+            ArithOp::Sub => {
+                for idx in 0..pool.count() {
+                    pool.values[idx].mul = -1;
+                }
+                pool
+            }
+            _ => pool
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TermGenerator {
     Pool(PoolGenerator),
     Constant(i32)
+}
+
+impl TermGenerator {
+    pub fn generate(&self) -> Pool {
+        match self {
+            TermGenerator::Pool(pg) => pg.generate(),
+            TermGenerator::Constant(n) => Pool{ values: vec![ Value::constant(*n)], value: 0 }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -73,6 +278,18 @@ pub struct PoolGenerator {
 }
 
 impl PoolGenerator {
+
+    /// generate 
+    /// 
+    /// * Example
+    /// 
+    /// ```
+    /// use dice_nom::generators::{PoolGenerator, PoolOp};
+    /// use dice_nom::results::Pool;
+    /// let gen = PoolGenerator{ count: 3, range: 6, op: Some(PoolOp::ExplodeEach(None)) };
+    /// let pool = gen.generate();
+    /// assert!(pool.count() >= 3);
+    /// ```
     pub fn generate(&self) -> Pool {
         let mut pool = Pool::new();
         for _ in 0..self.count {
@@ -117,26 +334,26 @@ impl PoolOp {
     /// ```
     /// use dice_nom::generators::PoolOp;
     /// use dice_nom::results::{ Value, Pool };
-    /// let val = Value{ value: 6, range: 6, add: 0, constant: false, bonus: false, keep: true };
+    /// let val = Value{ value: 6, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
     /// 
-    /// let mut pool = Pool{ values: vec![val] };
+    /// let mut pool = Pool{ values: vec![val], value: 0 };
     /// PoolOp::ExplodeEach(None).apply_last(&mut pool);
     /// assert_eq!(pool.count(), 2); // value is max so it should "explode"
     /// assert_eq!(pool.bonus(), 1); // rerolled value is considered bonus
     /// assert_eq!(pool.kept(), 2); // all values are kept
     /// assert!(pool.sum() > 6); // new roll is added to existing roll
     /// 
-    /// let mut pool = Pool{ values: vec![val] };
+    /// let mut pool = Pool{ values: vec![val], value: 0 };
     /// PoolOp::ExplodeEachUntil(None).apply_last(&mut pool);
     /// assert!(pool.count() >= 2); // value is max so it should "explode"; may continue to explode
     /// 
-    /// let mut pool = Pool{ values: vec![val] };
+    /// let mut pool = Pool{ values: vec![val], value: 0 };
     /// PoolOp::AddEach(Some(4)).apply_last(&mut pool);
     /// assert_eq!(pool.sum(), 10);
     /// assert_eq!(pool.values[0].add, 4);
     /// assert_eq!(pool.values[0].sum(), 10);
     /// 
-    /// let mut pool = Pool{ values: vec![val] };
+    /// let mut pool = Pool{ values: vec![val], value: 0 };
     /// PoolOp::SubEach(Some(4)).apply_last(&mut pool);
     /// assert_eq!(pool.sum(), 2);
     /// assert_eq!(pool.values[0].add, -4);
@@ -195,48 +412,48 @@ impl PoolOp {
     /// ```
     /// use dice_nom::generators::PoolOp;
     /// use dice_nom::results::{ Value, Pool };
-    /// let val1 = Value{ value: 6, range: 6, add: 0, constant: false, bonus: false, keep: true };
-    /// let val2 = Value{ value: 5, range: 6, add: 0, constant: false, bonus: false, keep: true };
-    /// let val3 = Value{ value: 1, range: 6, add: 0, constant: false, bonus: false, keep: true };
-    /// let val4 = Value{ value: 6, range: 6, add: 0, constant: false, bonus: false, keep: true };
-    /// let val5 = Value{ value: 1, range: 6, add: 0, constant: false, bonus: false, keep: true };
+    /// let val1 = Value{ value: 6, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
+    /// let val2 = Value{ value: 5, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
+    /// let val3 = Value{ value: 1, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
+    /// let val4 = Value{ value: 6, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
+    /// let val5 = Value{ value: 1, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2] };
+    /// let mut pool = Pool{ values: vec![val1, val2], value: 0 };
     /// PoolOp::Explode(Some(5)).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 2);
     /// assert_eq!(pool.kept(), 4);
     /// assert!(pool.sum() >= 13);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2] };
+    /// let mut pool = Pool{ values: vec![val1, val2], value: 0 };
     /// PoolOp::ExplodeUntil(Some(5)).apply_all(&mut pool);
     /// assert!(pool.count() >= 4);
     /// assert!(pool.bonus() >= 2);
     /// assert!(pool.kept() >= 4);
     /// assert!(pool.sum() >= 13);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4] };
+    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4], value: 0 };
     /// PoolOp::TakeHigh(2).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 12);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4] };
+    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4], value: 0 };
     /// PoolOp::TakeLow(2).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 6);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4] };
+    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4], value: 0 };
     /// PoolOp::TakeMid(2).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 11);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3] };
+    /// let mut pool = Pool{ values: vec![val1, val2, val3], value: 0 };
     /// let old_sum = pool.sum();
     /// PoolOp::Advantage.apply_all(&mut pool);
     /// assert_eq!(pool.count(), 6);
@@ -244,7 +461,7 @@ impl PoolOp {
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum <= pool.sum());
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3] };
+    /// let mut pool = Pool{ values: vec![val1, val2, val3], value: 0 };
     /// let old_sum = pool.sum();
     /// PoolOp::Disadvantage.apply_all(&mut pool);
     /// assert_eq!(pool.count(), 6);
@@ -252,14 +469,14 @@ impl PoolOp {
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum >= pool.sum());
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4, val5] };
+    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4, val5], value: 0 };
     /// PoolOp::BestGroup.apply_all(&mut pool);
     /// assert_eq!(pool.count(), 5);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 12);
     /// 
-    /// let mut pool = Pool{ values: vec![val2, val3, val4, val5] };
+    /// let mut pool = Pool{ values: vec![val2, val3, val4, val5], value: 0 };
     /// PoolOp::BestGroup.apply_all(&mut pool);
     /// assert_eq!(pool.sum(), 2);
     /// ```
