@@ -8,7 +8,7 @@ pub struct Generator {
 }
 
 impl Generator {
-    /// generate
+    /// generate builds a top-level generator that can compare two 
     /// 
     /// * Example
     /// 
@@ -131,13 +131,17 @@ impl SuccGenerator {
             Some(op) => match op {
                 SuccessOp::TargetSucc(n) => {
                     if pool.sum() >= *n {
-                        pool.value = pool.sum() - n + 1;
+                        pool.set_value(pool.sum() - n + 1);
+                    } else {
+                        pool.set_value(0);
                     }
                     pool
                 }
                 SuccessOp::TargetSuccNext(n, m) => {
                     if pool.sum() >= *n {
-                        pool.value = ((pool.sum() - n) % m) + 1;
+                        pool.set_value(((pool.sum() - n) % m) + 1);
+                    } else {
+                        pool.set_value(0);
                     }
                     pool
                 }
@@ -190,13 +194,15 @@ impl HitsGenerator {
             Some(op) => match op {
                 TargetOp::TargetHigh(n) => {
                     for idx in 0..pool.count() {
-                        pool.values[idx].hit = pool.values[idx].sum() >= *n;
+                        let b = pool.values[idx].sum() >= *n;
+                        pool.values[idx].set_hit(b);
                     }
                     pool
                 }
                 TargetOp::TargetLow(n) => {
                     for idx in 0..pool.count() {
-                        pool.values[idx].hit = pool.values[idx].sum() <= *n;
+                        let b = pool.values[idx].sum() <= *n;
+                        pool.values[idx].set_hit(b);
                     }
                     pool
                 }
@@ -246,7 +252,7 @@ impl ArithTermGenerator {
         match &self.op {
             ArithOp::Sub => {
                 for idx in 0..pool.count() {
-                    pool.values[idx].mul = -1;
+                    pool.values[idx].mark_penalty();
                 }
                 pool
             }
@@ -265,7 +271,7 @@ impl TermGenerator {
     pub fn generate(&self) -> Pool {
         match self {
             TermGenerator::Pool(pg) => pg.generate(),
-            TermGenerator::Constant(n) => Pool{ values: vec![ Value::constant(*n)], value: 0 }
+            TermGenerator::Constant(n) => Pool::new_with_values(vec![ Value::constant(*n) ])
         }
     }
 }
@@ -334,29 +340,29 @@ impl PoolOp {
     /// ```
     /// use dice_nom::generators::PoolOp;
     /// use dice_nom::results::{ Value, Pool };
-    /// let val = Value{ value: 6, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
+    /// let val = Value::random_with_value(6, 6, false);
     /// 
-    /// let mut pool = Pool{ values: vec![val], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val]);
     /// PoolOp::ExplodeEach(None).apply_last(&mut pool);
     /// assert_eq!(pool.count(), 2); // value is max so it should "explode"
     /// assert_eq!(pool.bonus(), 1); // rerolled value is considered bonus
     /// assert_eq!(pool.kept(), 2); // all values are kept
     /// assert!(pool.sum() > 6); // new roll is added to existing roll
     /// 
-    /// let mut pool = Pool{ values: vec![val], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val]);
     /// PoolOp::ExplodeEachUntil(None).apply_last(&mut pool);
     /// assert!(pool.count() >= 2); // value is max so it should "explode"; may continue to explode
     /// 
-    /// let mut pool = Pool{ values: vec![val], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val]);
     /// PoolOp::AddEach(Some(4)).apply_last(&mut pool);
     /// assert_eq!(pool.sum(), 10);
-    /// assert_eq!(pool.values[0].add, 4);
+    /// assert_eq!(pool.values[0].modifier(), 4);
     /// assert_eq!(pool.values[0].sum(), 10);
     /// 
-    /// let mut pool = Pool{ values: vec![val], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val]);
     /// PoolOp::SubEach(Some(4)).apply_last(&mut pool);
     /// assert_eq!(pool.sum(), 2);
-    /// assert_eq!(pool.values[0].add, -4);
+    /// assert_eq!(pool.values[0].modifier(), -4);
     /// assert_eq!(pool.values[0].sum(), 2);
     /// ```
     pub fn apply_last(&self, pool: &mut Pool) {
@@ -372,7 +378,8 @@ impl PoolOp {
                     let new_roll = Value::random(last.range, true);
                     pool.values.push(new_roll);
                 }
-            },
+            }
+
             PoolOp::ExplodeEachUntil(n) => {
                 loop {
                     let last = *pool.values.last().unwrap();
@@ -384,19 +391,19 @@ impl PoolOp {
                         break
                     }
                 }
-            },
+            }
+
             PoolOp::AddEach(n) => {
                 let mut last = pool.values.pop().unwrap();
                 let n = n.unwrap_or(1);
-                last.add = n;
-
+                last.set_modifier(n);
                 pool.values.push(last);
             }
+
             PoolOp::SubEach(n) => {
                 let mut last = pool.values.pop().unwrap();
                 let n = -1 * n.unwrap_or(1);
-                last.add = n;
-
+                last.set_modifier(n);
                 pool.values.push(last);
             }
             _ => ()
@@ -412,56 +419,57 @@ impl PoolOp {
     /// ```
     /// use dice_nom::generators::PoolOp;
     /// use dice_nom::results::{ Value, Pool };
-    /// let val1 = Value{ value: 6, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
-    /// let val2 = Value{ value: 5, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
-    /// let val3 = Value{ value: 1, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
-    /// let val4 = Value{ value: 6, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
-    /// let val5 = Value{ value: 1, range: 6, add: 0, mul: 1, constant: false, bonus: false, keep: true, hit: false };
+    /// let val1 = Value::random_with_value(6, 6, false);
+    /// let val2 = Value::random_with_value(5, 6, false);
+    /// let val3 = Value::random_with_value(1, 6, false);
+    /// let val4 = Value::random_with_value(6, 6, false);
+    /// let val5 = Value::random_with_value(1, 6, false);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2]);
     /// PoolOp::Explode(Some(5)).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 2);
     /// assert_eq!(pool.kept(), 4);
     /// assert!(pool.sum() >= 13);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2]);
     /// PoolOp::ExplodeUntil(Some(5)).apply_all(&mut pool);
     /// assert!(pool.count() >= 4);
     /// assert!(pool.bonus() >= 2);
     /// assert!(pool.kept() >= 4);
     /// assert!(pool.sum() >= 13);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4]);
     /// PoolOp::TakeHigh(2).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 12);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4]);
     /// PoolOp::TakeLow(2).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 6);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4]);
     /// PoolOp::TakeMid(2).apply_all(&mut pool);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 11);
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3]);
     /// let old_sum = pool.sum();
     /// PoolOp::Advantage.apply_all(&mut pool);
     /// assert_eq!(pool.count(), 6);
+    /// println!("pool: bonus={} kept={}", pool.bonus(), pool.kept());
     /// assert_eq!(pool.bonus(), 3);
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum <= pool.sum());
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3]);
     /// let old_sum = pool.sum();
     /// PoolOp::Disadvantage.apply_all(&mut pool);
     /// assert_eq!(pool.count(), 6);
@@ -469,14 +477,14 @@ impl PoolOp {
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum >= pool.sum());
     /// 
-    /// let mut pool = Pool{ values: vec![val1, val2, val3, val4, val5], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4, val5]);
     /// PoolOp::BestGroup.apply_all(&mut pool);
     /// assert_eq!(pool.count(), 5);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 12);
     /// 
-    /// let mut pool = Pool{ values: vec![val2, val3, val4, val5], value: 0 };
+    /// let mut pool = Pool::new_with_values(vec![val2, val3, val4, val5]);
     /// PoolOp::BestGroup.apply_all(&mut pool);
     /// assert_eq!(pool.sum(), 2);
     /// ```
@@ -522,8 +530,9 @@ impl PoolOp {
 
                 pool.values.sort_by(|a, b| a.value.cmp(&b.value));
                 for idx in 0..cnt {
-                    pool.values[idx].keep = idx < take;
-                    
+                    if idx >= take {
+                        pool.values[idx].mark_discarded();
+                    }
                 }
             }
 
@@ -537,7 +546,9 @@ impl PoolOp {
                 let skip_start = (cnt - take) / 2;
                 let skip_end = skip_start + take;
                 for idx in 0..cnt {
-                    pool.values[idx].keep = idx >= skip_start && idx < skip_end;
+                    if idx < skip_start || idx >= skip_end {
+                        pool.values[idx].mark_discarded();
+                    }
                 }                
             }
 
@@ -549,42 +560,47 @@ impl PoolOp {
 
                 pool.values.sort_by(|a, b| b.value.cmp(&a.value));
                 for idx in 0..cnt {
-                    pool.values[idx].keep = idx < take;
+                    if idx >= take {
+                        pool.values[idx].mark_discarded();
+                    }
                 }                
             }
 
             PoolOp::Advantage => {
                 let old = pool.sum();
+                let range = pool.range();
                 for _ in 0..cnt {
-                    let roll = Value::random(pool.range(), true);
+                    let roll = Value::random(range, true);
                     pool.values.push(roll);
+                    println!("pool = {:?}", pool);
                 }
 
                 if pool.sum() > old * 2 {
                     for idx in 0..cnt {
-                        pool.values[idx].keep = false;
+                        pool.values[idx].mark_discarded();
                     }
                 } else {
                     for idx in cnt..cnt * 2 {
-                        pool.values[idx].keep = false;
+                        pool.values[idx].mark_discarded();
                     }
                 }
             }
 
             PoolOp::Disadvantage => {
                 let old = pool.sum();
+                let range = pool.range();
                 for _ in 0..cnt {
-                    let roll = Value::random(pool.range(), true);
+                    let roll = Value::random(range, true);
                     pool.values.push(roll);
                 }
 
                 if pool.sum() > old * 2 {
                     for idx in cnt..cnt * 2 {
-                        pool.values[idx].keep = false;
+                        pool.values[idx].mark_discarded();
                     }
                 } else {
                     for idx in 0..cnt {
-                        pool.values[idx].keep = false;
+                        pool.values[idx].mark_discarded();
                     }
                 }
             }
@@ -597,7 +613,7 @@ impl PoolOp {
                 let mut curr_run = 0;
                 for idx in 0..cnt {
                     let val = pool.values[idx];
-                    if val.keep {
+                    if !val.is_discarded() {
                         if last_val == val.value {
                             curr_run += 1;
                             if curr_run > max_run {
@@ -613,7 +629,7 @@ impl PoolOp {
 
                 for v in &mut pool.values {
                     if v.value != max_val {
-                        v.keep = false;
+                        v.mark_discarded();
                     }
                 }
             },

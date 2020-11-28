@@ -11,22 +11,25 @@ pub struct Value {
     pub range: i32,
 
     /// modifier to the value; value + add = sum if kept == true
-    pub add: i32,
+    add: i32,
 
     /// 1 by default; -1 if a "penalty" value
-    pub mul: i32,
+    mul: i32,
 
     /// true if this is a constant value
-    pub constant: bool,
+    constant: bool,
 
     /// true if this value was generated as a bonus op
-    pub bonus: bool,
+    bonus: bool,
 
     /// true (default) if this value should be included in calculations
-    pub keep: bool,
+    keep: bool,
 
     /// true if this value matched a target operation
-    pub hit: bool,
+    hit: bool,
+
+    /// the current calculated value of this roll
+    sum: i32
 }
 
 impl fmt::Display for Value {
@@ -47,36 +50,70 @@ impl fmt::Display for Value {
 
 impl Value {
     pub fn constant(value: i32) -> Value {
-        Value{ value, range: value, add: 0, mul: 1, constant: true, bonus: false, keep: true, hit: false }
+        Value{ value, range: value, add: 0, mul: 1, constant: true, bonus: false, keep: true, hit: false, sum: value }
     }
 
     pub fn random(range: i32, bonus: bool) -> Value {
         let mut rng = rand::thread_rng();
         let value = rng.gen_range(1, range + 1);
-        Value{ value, range, constant: false, add: 0, mul: 1, bonus, keep: true, hit: false }
+        Value{ value, range, constant: false, add: 0, mul: 1, bonus, keep: true, hit: false, sum: value }
     }
 
-    pub fn sum(&self) -> i32 {
+    pub fn random_with_value(value: i32, range: i32, bonus: bool) -> Value {
+        Value{ value, range, constant: false, add: 0, mul: 1, bonus, keep: true, hit: false, sum: value }
+    }
+
+    pub fn sum(&self) -> i32 { self.sum }
+
+    pub fn is_const(&self) -> bool { self.constant }
+
+    pub fn is_random(&self) -> bool { !self.is_const() }
+
+    pub fn is_hit(&self) -> bool { self.keep && self.hit }
+
+    pub fn is_bonus(&self) -> bool { self.bonus }
+
+    pub fn is_discarded(&self) -> bool { !self.keep }
+
+    pub fn modifier(&self) -> i32 { self.add }
+
+    pub fn set_modifier(&mut self, add: i32) {
+        self.add = add;
         if self.keep {
-            self.value + self.add
-        } else {
-            0
+            self.sum = self.mul * (self.value + add);
         }
     }
 
-    pub fn is_const(&self) -> bool {
-        self.constant
+    pub fn mark_bonus(&mut self) {
+        self.bonus = true;
     }
 
-    pub fn is_random(&self) -> bool {
-        !self.is_const()
+    pub fn mark_penalty(&mut self) {
+        self.mul = -1;
+        self.sum = self.mul * (self.value + self.add);
     }
 
-    pub fn hit(&self) -> i32 {
-        if self.keep && self.hit {
-            self.mul as i32
-        } else {
-            0
+    pub fn mark_discarded(&mut self) {
+        self.keep = false;
+        self.sum = 0;
+        self.mul = 0;
+    }
+
+    pub fn set_hit(&mut self, hit: bool) {
+        self.hit = hit;
+        if self.keep {
+            if hit {
+                self.sum = self.mul;
+            } else {
+                self.sum = self.mul * (self.value + self.add);
+            }
+        }
+    }
+
+    pub fn mark_hit(&mut self) { 
+        self.hit = true;
+        if self.keep {
+            self.sum = self.mul;
         }
     }
 }
@@ -84,7 +121,8 @@ impl Value {
 #[derive(Debug)]
 pub struct Pool {
     pub values: Vec<Value>,
-    pub value: i32,
+    sum: i32,
+    value: i32,
 }
 
 impl fmt::Display for Pool {
@@ -104,7 +142,12 @@ impl fmt::Display for Pool {
 
 impl Pool {
     pub fn new() -> Pool {
-        Pool{ values: vec![], value: 0 }
+        Pool{ values: vec![], sum: 0, value: 0 }
+    }
+
+    pub fn new_with_values(values: Vec<Value>) -> Pool {
+        let sum = values.iter().map(|&v| v.sum()).sum();
+        Pool{ values, sum, value: 0 }
     }
 
     pub fn range(&self) -> i32 {
@@ -115,28 +158,30 @@ impl Pool {
         }
     }
 
-    pub fn count(&self) -> usize {
-        self.values.len()
-    }
+    pub fn count(&self) -> usize { self.values.len() }
 
-    pub fn constants(&self) -> usize {
-        self.values.iter().filter(|&v| v.constant ).count()
+    pub fn sum(&self) -> i32 {
+        self.values.iter().map(|&v| v.sum()).sum()
     }
 
     pub fn kept(&self) -> usize {
-        self.values.iter().filter(|&v| v.keep ).count()
+        self.values.iter().filter(|&v| !v.is_discarded() ).count()
     }
 
-    pub fn bonus(&self) -> usize {  
-        self.values.iter().filter(|&v| v.bonus ).count()
+    pub fn hits(&self) -> usize {
+        self.values.iter().filter(|&v| v.is_hit()).count()
     }
 
-    pub fn sum(&self) -> i32 {
-        self.values.iter().map(|&v| v.sum() ).sum()
+    pub fn bonus(&self) -> usize {
+        println!("self.value = {:?}", self.values);
+        println!("self.bonus = {:?}", self.values.iter().filter(|&v| v.is_bonus() ));
+        self.values.iter().filter(|&v| v.is_bonus()).count()
     }
 
-    pub fn hits(&self) -> i32 {
-        self.values.iter().map(|&v| v.hit() ).sum()
+    pub fn value(&self) -> i32 { self.value }
+
+    pub fn set_value(&mut self, value: i32) {
+        self.value = value
     }
 }
 
