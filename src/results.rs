@@ -114,8 +114,8 @@ impl Value {
 #[derive(Debug)]
 pub struct Pool {
     pub values: Vec<Value>,
-    sum: i32,
-    value: i32,
+    // sum: i32,
+    value: Option<i32>,
 }
 
 impl fmt::Display for Pool {
@@ -129,18 +129,21 @@ impl fmt::Display for Pool {
                 write!(f, ", {}", v)?;
             }
         }
-        write!(f, " = {}", self.sum())
+
+        match self.value {
+            Some(v) => write!(f, " = {} ({})", self.sum(), v),
+            None => write!(f, " = {}", self.sum())
+        }
     }
 }
 
 impl Pool {
     pub fn new() -> Pool {
-        Pool{ values: vec![], sum: 0, value: 0 }
+        Pool{ values: vec![], value: None }
     }
 
     pub fn new_with_values(values: Vec<Value>) -> Pool {
-        let sum = values.iter().map(|&v| v.sum()).sum();
-        Pool{ values, sum, value: 0 }
+        Pool{ values, value: None }
     }
 
     pub fn range(&self) -> i32 {
@@ -169,10 +172,16 @@ impl Pool {
         self.values.iter().filter(|&v| v.is_bonus()).count()
     }
 
-    pub fn value(&self) -> i32 { self.value }
+    pub fn value(&self) -> i32 { 
+        if let Some(v) = self.value {
+            v
+        } else {
+            self.sum()
+        }
+    }
 
     pub fn set_value(&mut self, value: i32) {
-        self.value = value
+        self.value = Some(value)
     }
 }
 
@@ -197,7 +206,7 @@ impl Results {
     pub fn sum(&self) -> i32 {
         match &self.rhs {
             Some(_) => self.value,
-            None => self.lhs.sum()
+            None => self.lhs.value()
         }
     }
 }

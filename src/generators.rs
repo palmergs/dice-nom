@@ -52,7 +52,7 @@ impl Generator {
             Some(op) => match op {
                 ComparisonOp::GT(rhs) => {
                     let rhs = rhs.generate();
-                    let val = if lhs.sum() > rhs.sum() {
+                    let val = if lhs.value() > rhs.value() {
                         1
                     } else {
                         0
@@ -62,7 +62,7 @@ impl Generator {
 
                 ComparisonOp::GE(rhs) => {
                     let rhs = rhs.generate();
-                    let val = if lhs.sum() >= rhs.sum() {
+                    let val = if lhs.value() >= rhs.value() {
                         1
                     } else {
                         0
@@ -72,7 +72,7 @@ impl Generator {
                 
                 ComparisonOp::LT(rhs) => {
                     let rhs = rhs.generate();
-                    let val = if lhs.sum() < rhs.sum() {
+                    let val = if lhs.value() < rhs.value() {
                         1
                     } else {
                         0
@@ -82,7 +82,7 @@ impl Generator {
                 
                 ComparisonOp::LE(rhs) => {
                     let rhs = rhs.generate();
-                    let val = if lhs.sum() <= rhs.sum() {
+                    let val = if lhs.value() <= rhs.value() {
                         1
                     } else {
                         0
@@ -92,7 +92,7 @@ impl Generator {
 
                 ComparisonOp::EQ(rhs) => {
                     let rhs = rhs.generate();
-                    let val = if lhs.sum() == rhs.sum() {
+                    let val = if lhs.value() == rhs.value() {
                         1
                     } else {
                         0
@@ -102,9 +102,9 @@ impl Generator {
                 
                 ComparisonOp::CMP(rhs) => {
                     let rhs = rhs.generate();
-                    let val = if lhs.sum() < rhs.sum() {
+                    let val = if lhs.value() < rhs.value() {
                         -1
-                    } else if lhs.sum() > rhs.sum() {
+                    } else if lhs.value() > rhs.value() {
                         1
                     }else {
                         0
@@ -158,6 +158,8 @@ impl fmt::Display for SuccGenerator {
 }
 
 impl SuccGenerator {
+    /// generate builds a generator that calculates success based on whether
+    /// the pool sum is greater than the target number.
     pub fn generate(&self) -> Pool {
         let mut pool = self.hits.generate();
         match &self.op {
@@ -172,7 +174,7 @@ impl SuccGenerator {
                 }
                 SuccessOp::TargetSuccNext(n, m) => {
                     if pool.sum() >= *n {
-                        pool.set_value(((pool.sum() - n) % m) + 1);
+                        pool.set_value(((pool.sum() - n) / m) + 1);
                     } else {
                         pool.set_value(0);
                     }
