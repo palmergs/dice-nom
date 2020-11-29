@@ -43,6 +43,10 @@ pub fn roller(count: i32, range: i32, op: Option<&str>) -> PoolGenerator {
 ///     let results = gen.generate();
 ///     assert!(!results.rhs.is_none());
 /// }
+/// 
+/// let gen = dice_nom::parse("attack badger");
+/// assert!(!gen.is_ok());
+/// assert_eq!(gen, Err("attack badger"));
 /// ```
 pub fn parse(input: &str) -> Result<Generator, &str> {
     match parsers::generator_parser(input) {
