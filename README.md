@@ -78,7 +78,7 @@ Display the rolled value. One value per line.
 ### TODO
 
 * library interface
-* -arithmetic operators don't appear to be working-
+* ~~arithmetic operators don't appear to be working~~
 
 ### Chart
 
