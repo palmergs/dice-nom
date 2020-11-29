@@ -186,10 +186,19 @@ impl fmt::Display for Results {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.lhs)?;
         match &self.rhs {
-            Some(rhs) => write!(f, " <> {} = {}", rhs, self.value)?,
+            Some(rhs) => write!(f, " <> {} = {}", rhs, self.sum())?,
             None => ()
         }
         write!(f, "")
+    }
+}
+
+impl Results {
+    pub fn sum(&self) -> i32 {
+        match &self.rhs {
+            Some(_) => self.value,
+            None => self.lhs.sum()
+        }
     }
 }
 
