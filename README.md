@@ -57,12 +57,13 @@ ARGS:
 
 ### Expression
 
-Display the generator, the individual dice rolled, and the calculated value. 
+Display the generator, the individual dice rolled, and the calculated value. The expression (or at least the part that was successfully parsed) if first, followed by the dice rolls. `*` indicates a bonus die roll and `-` after the value indicates that the roll was dicarded. The total (excluding discarded rolls) is diplayed level. If a success operator is used, the level of success if displayed between `{}`.
 
 ```
-> roll -n 2 3d4\*\*
-3d4**: 4, 2*, 3, 3 = 12
-3d4**: 3, 3, 1 = 7
+> roll -n 2 3d4\*\*\{6\}
+3d4**{6}: 1, 2, 3 = 6 {1}
+3d4**{6}: 2, 1, 2 = 5 {0}
+3d4**{6}: 4, 4*, 4*, 3*, 4, 1*, 2 = 22 {17}
 ```
 
 ### Values
@@ -74,11 +75,6 @@ Display the rolled value. One value per line.
 12
 8
 ```
-
-### TODO
-
-* library interface
-* ~~arithmetic operators don't appear to be working~~
 
 ### Chart
 
@@ -103,6 +99,12 @@ Generate a histogram of values. First column is value. Second column is the perc
  17.   5.8: ****************
  18.   1.6: *******
 ```
+
+### TODO
+
+* library interface
+* color code the results to the terminal (discards red, bonus green, etc)
+* ~~arithmetic operators don't appear to be working~~
 
 ## Development Notes
 

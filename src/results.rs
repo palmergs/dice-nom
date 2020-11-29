@@ -33,9 +33,16 @@ pub struct Value {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.bonus {
-            false => write!(f, "{}", self.sum),
-            true => write!(f, "{}*", self.sum),
+        if self.keep {
+            match self.bonus {
+                false => write!(f, "{}", self.sum),
+                true => write!(f, "{}*", self.sum),
+            }
+        } else {
+            match self.bonus {
+                false => write!(f, "{}-", self.value + self.add),
+                true => write!(f, "{}*-", self.value + self.add),
+            }
         }
     }
 }
@@ -174,7 +181,7 @@ impl fmt::Display for Pool {
         }
 
         match self.value {
-            Some(v) => write!(f, " = {} ({})", self.sum(), v),
+            Some(v) => write!(f, " = {} {{{}}}", self.sum(), v),
             None => write!(f, " = {}", self.sum()),
         }
     }
