@@ -10,7 +10,7 @@ Another dice generator to turn text representation of dice rolls into generators
 * `**` - Explode Each Until . Same as explode each, but keep rolling so long as the die is a maximum value. An optional value can be supplied and the die is rerolled if it is greater than or equal to the value.
 * `++<n>` - Add Each. Add the given value to each die rolled.
 * `--<n>` - Subtract Each. Subtract the given value from each die rolled.
-* `\`<n>` - Take Low. Given a dice pool, keep the lowest N values.
+* ```<n>`` - Take Low. Given a dice pool, keep the lowest N values.
 * `^<n>` - Take High. Given a dice pool, keep the highest N values. 
 * `~<n>` - Take Middle. Given a dice pool, keep the middle N values.
 * `ADV` - Advantage. Roll the dice pool twice, keeping the higher pool.
