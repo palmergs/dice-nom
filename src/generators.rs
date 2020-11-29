@@ -608,7 +608,6 @@ impl PoolOp {
     /// let old_sum = pool.sum();
     /// PoolOp::Advantage.apply_all(&mut pool);
     /// assert_eq!(pool.count(), 6);
-    /// println!("pool: bonus={} kept={}", pool.bonus(), pool.kept());
     /// assert_eq!(pool.bonus(), 3);
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum <= pool.sum());
@@ -716,7 +715,6 @@ impl PoolOp {
                 for _ in 0..cnt {
                     let roll = Value::random(range, true);
                     pool.values.push(roll);
-                    println!("pool = {:?}", pool);
                 }
 
                 if pool.sum() > old * 2 {
