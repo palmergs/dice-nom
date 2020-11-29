@@ -1,4 +1,4 @@
-# dice-nom
+# Dice::nom
 
 Another dice generator to turn text representation of dice rolls into generators. The command line interface includes many common operators; exploding dice, target numbers, etc..
 
