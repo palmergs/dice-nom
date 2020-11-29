@@ -1,4 +1,5 @@
 use std::fmt;
+use std::num;
 use super::results::{Results, Pool, Value};
 
 #[derive(Debug, PartialEq)]
@@ -248,14 +249,14 @@ impl HitsGenerator {
             Some(op) => match op {
                 TargetOp::TargetHigh(n) => {
                     for idx in 0..pool.count() {
-                        let b = pool.values[idx].sum() >= *n;
+                        let b = pool.values[idx].sum().abs() >= *n;
                         pool.values[idx].set_hit(b);
                     }
                     pool
                 }
                 TargetOp::TargetLow(n) => {
                     for idx in 0..pool.count() {
-                        let b = pool.values[idx].sum() <= *n;
+                        let b = pool.values[idx].sum().abs() <= *n;
                         pool.values[idx].set_hit(b);
                     }
                     pool

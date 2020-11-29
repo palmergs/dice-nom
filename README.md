@@ -17,6 +17,11 @@ Another dice generator to turn text representation of dice rolls into generators
 * `DIS` - Disadvantage. Roll the dice pool twice, keeping the lower pool.
 * `Y` - Best Group. Keep the largest group of identical values from the pool. Keep the higher value if two groups are the same size. (e.g. `5d6Y: 3, 3, 4, 4, 1 = 8`)
 
+## Arithmetic Operators
+
+* `+` - Addition is assumed and can be ommited. `2d4 + 2d6` is equivalent to `2d4 2d6`.
+* `-` - Subtraction inverts the values of the dice rolled and applies to both target hits and sums For example `2d4 - 2d4[3]` returns the number of successes in the first pool minus the number of successes in the second pool.
+
 ## Target Operators
 
 * `[<n>]` - Target High. Rolls greater then or equal to the given value are hits and are given a value of 1, others are given a value of 0.
