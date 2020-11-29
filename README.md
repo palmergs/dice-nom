@@ -1,6 +1,6 @@
 # Dice::nom
 
-Another dice generator to turn text representation of dice rolls into generators. The command line interface includes many common operators; exploding dice, target numbers, etc..
+Another dice generator to turn text representation of dice rolls into generators. The command line interface includes many common operators; exploding dice, target numbers, success levels, etc..
 
 ## Dice Operators
 
@@ -20,7 +20,7 @@ Another dice generator to turn text representation of dice rolls into generators
 ## Arithmetic Operators
 
 * `+` - Addition is assumed and can be ommited. `2d4 + 2d6` is equivalent to `2d4 2d6`.
-* `-` - Subtraction inverts the values of the dice rolled and applies to both target hits and sums For example `2d4 - 2d4[3]` returns the number of successes in the first pool minus the number of successes in the second pool.
+* `-` - Subtraction inverts the values of the dice rolled and applies to both target hits and sums. For example, the string `2d4 - 2d4[3]` returns the number of successes in the first pool minus the number of successes in the second pool.
 
 ## Target Operators
 
@@ -37,7 +37,6 @@ Two pools can be compared using the `>`, `<`, `>=`, `<=`, and `=` which return 1
 ```
 > roll --help
 roll 0.1.0
-Galen P.
 Generates random dice rolls
 
 USAGE:
@@ -60,7 +59,7 @@ ARGS:
 Display the generator, the individual dice rolled, and the calculated value. The expression (or at least the part that was successfully parsed) if first, followed by the dice rolls. `*` indicates a bonus die roll and `-` after the value indicates that the roll was dicarded. The total (excluding discarded rolls) is diplayed level. If a success operator is used, the level of success if displayed between `{}`.
 
 ```
-> roll -n 2 3d4\*\*\{6\}
+> roll -n 3 3d4\*\*\{6\}
 3d4**{6}: 1, 2, 3 = 6 {1}
 3d4**{6}: 2, 1, 2 = 5 {0}
 3d4**{6}: 4, 4*, 4*, 3*, 4, 1*, 2 = 22 {17}
@@ -104,6 +103,7 @@ Generate a histogram of values. First column is value. Second column is the perc
 
 * library interface
 * color code the results to the terminal (discards red, bonus green, etc)
+* should `rand::thread_rng()` be moved out of `Value` struct?
 * ~~arithmetic operators don't appear to be working~~
 
 ## Development Notes

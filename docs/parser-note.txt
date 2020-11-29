@@ -1,15 +1,15 @@
-gen  := succ > nums | succ < nums | succ = nums | succ
-succ := hits {constant, constant} | hits {constant} | hits
+gen  := succ > succ | succ < succ | succ = succ | succ
+succ := hits {num, num} | hits {num} | hits
 hits := pare top | pare
 pare := ( expr ) | expr
 expr := term + expr | term - expr | term
-term := pool op | pool | num
+term := pool pop | pool | num
 pool := num D range | D range
 num  := [0-9]+
-rng  := nums | % | %% | %%%
+rng  := num | % | %% | %%%
 top  := [ num ] | 
         ( num )
-op   := ! |             // reroll pool if all are rng
+pop  := ! |             // reroll pool if all are rng
         ! num |         // reroll pool if all are >= num
         !! |            // reroll poll until any are < rng
         !! num |        // reroll poll until any are < num
