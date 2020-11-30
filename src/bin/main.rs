@@ -7,7 +7,7 @@ use dice_nom::parsers::generator_parser;
 use std::collections::BTreeMap;
 use std::i32::MAX;
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     let matches = App::new("roll")
@@ -91,7 +91,7 @@ fn display_chart(gen: &Generator, count: Option<&str>) {
                 for _ in 0..=(n / width) {
                     print!("*");
                 }
-                println!("");
+                println!();
                 cnt -= *n as f64;
             }
             None => {

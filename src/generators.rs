@@ -1,5 +1,6 @@
 use super::results::{Pool, Results, Value};
 use std::fmt;
+use std::cmp::Ordering;
 
 #[derive(Debug, PartialEq)]
 pub struct Generator {
@@ -82,12 +83,10 @@ impl Generator {
 
                 ComparisonOp::CMP(rhs) => {
                     let rhs = rhs.generate();
-                    let val = if lhs.value() < rhs.value() {
-                        -1
-                    } else if lhs.value() > rhs.value() {
-                        1
-                    } else {
-                        0
+                    let val = match lhs.value().cmp(&rhs.value()) {
+                        Ordering::Less => -1,
+                        Ordering::Greater => 1,
+                        Ordering::Equal => 0,
                     };
                     (Some(rhs), val)
                 }
@@ -546,7 +545,7 @@ impl PoolOp {
 
             PoolOp::SubEach(n) => {
                 let mut last = pool.values.pop().unwrap();
-                let n = -1 * n.unwrap_or(1);
+                let n = -n.unwrap_or(1);
                 last.set_modifier(n);
                 pool.values.push(last);
             }

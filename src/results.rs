@@ -187,6 +187,12 @@ impl fmt::Display for Pool {
     }
 }
 
+impl Default for Pool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Pool {
     pub fn new() -> Pool {
         Pool {
@@ -203,7 +209,7 @@ impl Pool {
     }
 
     pub fn range(&self) -> i32 {
-        if self.values.len() == 0 {
+        if self.values.is_empty() {
             0
         } else {
             self.values

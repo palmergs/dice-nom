@@ -156,7 +156,7 @@ fn implicit_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
             input,
             ArithTermGenerator {
                 op: ArithOp::ImplicitAdd,
-                term: term,
+                term,
             },
         )),
         Err(e) => Err(e),
@@ -169,7 +169,7 @@ fn add_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
             input,
             ArithTermGenerator {
                 op: ArithOp::Add,
-                term: term,
+                term,
             },
         )),
         Err(e) => Err(e),
@@ -182,7 +182,7 @@ fn sub_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
             input,
             ArithTermGenerator {
                 op: ArithOp::Sub,
-                term: term,
+                term,
             },
         )),
         Err(e) => Err(e),
@@ -262,7 +262,7 @@ fn pool_parser(input: &str) -> IResult<&str, TermGenerator> {
 pub fn range_parser(input: &str) -> IResult<&str, i32> {
     match alt((digit1, is_a("%")))(input) {
         Ok((input, chars)) => {
-            if chars.chars().nth(0).unwrap() == '%' {
+            if chars.starts_with('%') {
                 let base = 10i32;
                 let exp = chars.len() as u32;
                 let n = match base.checked_pow(exp) {
@@ -408,7 +408,7 @@ pub fn pool_op_parser(input: &str) -> IResult<&str, PoolOp> {
 pub fn optional_num_parser(input: &str) -> IResult<&str, Option<i32>> {
     match tuple((space0, digit0))(input) {
         Ok((input, (_, chars))) => {
-            if chars.len() > 0 {
+            if !chars.is_empty() {
                 Ok((input, Some(chars.parse::<i32>().unwrap())))
             } else {
                 Ok((input, None))
