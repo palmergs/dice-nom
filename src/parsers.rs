@@ -193,7 +193,7 @@ fn arith_term_parser(input: &str) -> IResult<&str, ArithTermGenerator> {
     alt((implicit_term_parser, add_term_parser, sub_term_parser))(input)
 }
 
-/// term_parser builds a TermGenerator from the given input.
+/// `term_parser` builds a `TermGenerator` from the given input.
 ///
 /// # Examples
 ///

@@ -5,7 +5,7 @@ use generators::{ Generator, PoolGenerator };
 
 pub mod parsers;
 
-/// roller builds a simple PoolGenerator that can randomly generate dice rolls.
+/// roller builds a simple `PoolGenerator` that can randomly generate dice rolls.
 ///
 /// * Examples
 /// 
