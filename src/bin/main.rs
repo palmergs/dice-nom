@@ -55,26 +55,28 @@ fn main() {
 }
 
 fn display_results(gen: &Generator, count: Option<&str>) {
+    let mut rng = rand::thread_rng();
     match count {
         Some(n) => {
             let n = n.parse::<usize>().unwrap_or(1);
             for _ in 0..n {
-                println!("{}: {}", gen, gen.generate());
+                println!("{}: {}", gen, gen.generate(&mut rng));
             }
         }
-        None => println!("{}: {}", gen, gen.generate()),
+        None => println!("{}: {}", gen, gen.generate(&mut rng)),
     }
 }
 
 fn display_value(gen: &Generator, count: Option<&str>) {
+    let mut rng = rand::thread_rng();
     match count {
         Some(n) => {
             let n = n.parse::<usize>().unwrap_or(1);
             for _ in 0..n {
-                println!("{}", gen.generate().sum());
+                println!("{}", gen.generate(&mut rng).sum());
             }
         }
-        None => println!("{}", gen.generate().sum()),
+        None => println!("{}", gen.generate(&mut rng).sum()),
     }
 }
 
@@ -111,8 +113,9 @@ struct Histo {
 impl Histo {
     pub fn build(gen: &Generator, count: usize) -> Histo {
         let mut histo = Histo{ min: MAX, max: 0, max_cnt: 0, map: BTreeMap::new() };
+        let mut rng = rand::thread_rng();
         for _ in 0..count {
-            let v = gen.generate().sum();
+            let v = gen.generate(&mut rng).sum();
             if v < histo.min { histo.min = v; }
             if v > histo.max { histo.max = v; }
             match histo.map.get(&v) {

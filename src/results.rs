@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use rand::Rng;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -62,8 +63,7 @@ impl Value {
         }
     }
 
-    pub fn random(range: i32, bonus: bool) -> Value {
-        let mut rng = rand::thread_rng();
+    pub fn random<R: Rng + ?Sized>(range: i32, bonus: bool, rng: &mut R) -> Value {
         let value = rng.gen_range(1, range + 1);
         Value {
             value,
@@ -164,8 +164,7 @@ impl Value {
 #[derive(Debug)]
 pub struct Pool {
     pub values: Vec<Value>,
-    // sum: i32,
-    value: Option<i32>,
+    value: Option<i32>
 }
 
 impl fmt::Display for Pool {
