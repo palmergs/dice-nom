@@ -103,7 +103,8 @@ Generate a histogram of values. First column is value. Second column is the perc
 
 * library interface
 * color code the results to the terminal (discards red, bonus green, etc)
-* ~~should `rand::thread_rng()` be moved out of `Value` struct?~~
+* ~~should `rand::thread_rng()` be moved out of `Value` struct?~~ 
+  NOTE: passing in a random number generator as opposed to initializing it for each roll only resulted in a roughly 6% increase in performance
 * ~~arithmetic operators don't appear to be working~~
 
 ## Development Notes
