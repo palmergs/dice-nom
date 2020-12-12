@@ -1,4 +1,3 @@
-use rand::prelude::*;
 use rand::Rng;
 use std::fmt;
 
