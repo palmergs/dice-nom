@@ -2,7 +2,7 @@
 name = "dice-nom"
 version = "0.1.0"
 authors = ["Galen Palmer <palmergs@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [[bin]]
 name = "roll"
@@ -11,6 +11,6 @@ path = "src/bin/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "4.4.6", features = ["derive"] }
 nom = "6.0.1"
-clap = "2.33.3"
-rand = "0.7.3"
+rand = "0.8.5"

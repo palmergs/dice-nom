@@ -1,5 +1,5 @@
 extern crate clap;
-use clap::{App, Arg};
+use clap::Parser;
 
 use dice_nom::generators::Generator;
 use dice_nom::parsers::generator_parser;
@@ -9,79 +9,60 @@ use std::i32::MAX;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn main() {
-    let matches = App::new("roll")
-        .version(VERSION)
-        .about("Generates random dice rolls")
-        .author("Galen P.")
-        .arg(
-            Arg::with_name("display")
-                .long("display")
-                .short("d")
-                .takes_value(true)
-                .help("Display the results: full, value, or chart"),
-        )
-        .arg(
-            Arg::with_name("count")
-                .long("count")
-                .short("n")
-                .takes_value(true)
-                .help("Run the generator count number of times."),
-        )
-        .arg(
-            Arg::with_name("INPUT")
-                .help("A dice roll expression is required.")
-                .required(true)
-                .index(1),
-        )
-        .get_matches();
+#[derive(Parser, Debug)]
+#[command(name = "roll")]
+#[command(author = "Galen P <galenp@gmail.com>")]
+#[command(version = VERSION)]
+#[command(about = "Generates random dice rolls")]
+struct Args {
+    /// Display the results: full, value, or chart
+    #[arg(short, long)]
+    display: Option<String>,
 
-    let input = matches.value_of("INPUT").unwrap();
-    let count = matches.value_of("count");
-    let gen = match generator_parser(input) {
+    /// Run the generator count number of times.
+    #[arg(short, long)]
+    count: Option<u32>,
+
+    input: String,
+}
+
+
+fn main() {
+
+    let args = Args::parse();
+    let input = args.input;
+
+    let gen = match generator_parser(input.as_ref()) {
         Ok((_, gen)) => gen,
         Err(_) => panic!("could not parse `{}`", input),
     };
 
-    match matches.value_of("display") {
-        Some(s) => match s {
-            "full" => display_results(&gen, count),
-            "value" => display_value(&gen, count),
-            "chart" => display_chart(&gen, count),
-            _ => display_results(&gen, count),
+    match args.display  {
+        Some(s) => match s.as_str() {
+            "full" => display_results(&gen, args.count.unwrap_or(1)),
+            "value" => display_value(&gen, args.count.unwrap_or(1)),
+            "chart" => display_chart(&gen, args.count.unwrap_or(10_000)),
+            _ => display_results(&gen, args.count.unwrap_or(1)),
         },
-        _ => display_results(&gen, count),
+        _ => display_results(&gen, args.count.unwrap_or(1)),
     }
 }
 
-fn display_results(gen: &Generator, count: Option<&str>) {
+fn display_results(gen: &Generator, n: u32) {
     let mut rng = rand::thread_rng();
-    match count {
-        Some(n) => {
-            let n = n.parse::<usize>().unwrap_or(1);
-            for _ in 0..n {
-                println!("{}: {}", gen, gen.generate(&mut rng));
-            }
-        }
-        None => println!("{}: {}", gen, gen.generate(&mut rng)),
+    for _ in 0..n {
+        println!("{}: {}", gen, gen.generate(&mut rng));
     }
 }
 
-fn display_value(gen: &Generator, count: Option<&str>) {
+fn display_value(gen: &Generator, n: u32) {
     let mut rng = rand::thread_rng();
-    match count {
-        Some(n) => {
-            let n = n.parse::<usize>().unwrap_or(1);
-            for _ in 0..n {
-                println!("{}", gen.generate(&mut rng).sum());
-            }
-        }
-        None => println!("{}", gen.generate(&mut rng).sum()),
+    for _ in 0..n {
+        println!("{}", gen.generate(&mut rng).sum());
     }
 }
 
-fn display_chart(gen: &Generator, count: Option<&str>) {
-    let num = count.unwrap_or("10000").parse::<usize>().unwrap_or(10000);
+fn display_chart(gen: &Generator, num: u32) {
     let histo = Histo::build(gen, num);
 
     let mut cnt = num as f64;
@@ -106,12 +87,12 @@ fn display_chart(gen: &Generator, count: Option<&str>) {
 struct Histo {
     min: i32,
     max: i32,
-    max_cnt: usize,
-    map: BTreeMap<i32, usize>,
+    max_cnt: u32,
+    map: BTreeMap<i32, u32>,
 }
 
 impl Histo {
-    pub fn build(gen: &Generator, count: usize) -> Histo {
+    pub fn build(gen: &Generator, count: u32) -> Histo {
         let mut histo = Histo{ min: MAX, max: 0, max_cnt: 0, map: BTreeMap::new() };
         let mut rng = rand::thread_rng();
         for _ in 0..count {

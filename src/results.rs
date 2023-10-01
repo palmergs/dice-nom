@@ -63,7 +63,7 @@ impl Value {
     }
 
     pub fn random<R: Rng + ?Sized>(range: i32, bonus: bool, rng: &mut R) -> Value {
-        let value = rng.gen_range(1, range + 1);
+        let value = rng.gen_range(0..range) + 1;
         Value {
             value,
             range,
