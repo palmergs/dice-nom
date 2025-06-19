@@ -1,8 +1,7 @@
 use super::results::{Pool, Results, Value};
 use rand::prelude::*;
-use std::fmt;
 use std::cmp::Ordering;
-
+use std::fmt;
 
 #[derive(Debug, PartialEq)]
 pub struct Generator {
@@ -149,17 +148,17 @@ impl SuccGenerator {
             Some(op) => match op {
                 SuccessOp::TargetSucc(n) => {
                     if pool.sum() >= *n {
-                        pool.set_value(pool.sum() - n + 1);
+                        pool.set_total(pool.sum() - n + 1);
                     } else {
-                        pool.set_value(0);
+                        pool.set_total(0);
                     }
                     pool
                 }
                 SuccessOp::TargetSuccNext(n, m) => {
                     if pool.sum() >= *n {
-                        pool.set_value(((pool.sum() - n) / m) + 1);
+                        pool.set_total(((pool.sum() - n) / m) + 1);
                     } else {
-                        pool.set_value(0);
+                        pool.set_total(0);
                     }
                     pool
                 }
@@ -236,6 +235,7 @@ impl HitsGenerator {
                         let b = pool.values[idx].sum().abs() >= *n;
                         pool.values[idx].set_hit(b);
                     }
+                    pool.set_total(pool.sum());
                     pool
                 }
                 TargetOp::TargetLow(n) => {
@@ -243,6 +243,7 @@ impl HitsGenerator {
                         let b = pool.values[idx].sum().abs() <= *n;
                         pool.values[idx].set_hit(b);
                     }
+                    pool.set_total(pool.sum());
                     pool
                 }
             },
@@ -286,6 +287,7 @@ impl ExprGenerator {
         for t in self.terms.iter() {
             pool.values.append(&mut t.generate(rng).values);
         }
+        pool.set_total(pool.sum());
         pool
     }
 }
@@ -724,7 +726,7 @@ impl PoolOp {
                 let old = pool.sum();
                 let range = pool.range();
                 for _ in 0..cnt {
-                    let roll = Value::random(range, true, rng);
+                    let roll = Value::random(range, false, rng);
                     pool.values.push(roll);
                 }
 
@@ -743,7 +745,7 @@ impl PoolOp {
                 let old = pool.sum();
                 let range = pool.range();
                 for _ in 0..cnt {
-                    let roll = Value::random(range, true, rng);
+                    let roll = Value::random(range, false, rng);
                     pool.values.push(roll);
                 }
 

@@ -1,7 +1,8 @@
 use rand::Rng;
+use serde::Serialize;
 use std::fmt;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
 pub struct Value {
     /// value of this roll (or constant) before modified
     pub value: i32,
@@ -35,8 +36,20 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.keep {
             match self.bonus {
-                false => write!(f, "{}", self.sum),
-                true => write!(f, "{}*", self.sum),
+                false => {
+                    if self.value != self.sum {
+                        write!(f, "{} ({})", self.value, self.sum)
+                    } else {
+                        write!(f, "{}", self.value)
+                    }
+                }
+                true => {
+                    if self.value != self.sum {
+                        write!(f, "{}* ({})", self.value, self.sum)
+                    } else {
+                        write!(f, "{}*", self.value)
+                    }
+                }
             }
         } else {
             match self.bonus {
@@ -160,10 +173,10 @@ impl Value {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Pool {
     pub values: Vec<Value>,
-    value: Option<i32>
+    total: Option<i32>,
 }
 
 impl fmt::Display for Pool {
@@ -178,7 +191,7 @@ impl fmt::Display for Pool {
             }
         }
 
-        match self.value {
+        match self.total {
             Some(v) => write!(f, " = {} {{{}}}", self.sum(), v),
             None => write!(f, " = {}", self.sum()),
         }
@@ -195,14 +208,14 @@ impl Pool {
     pub fn new() -> Pool {
         Pool {
             values: vec![],
-            value: None,
+            total: None,
         }
     }
 
     pub fn new_with_values(values: Vec<Value>) -> Pool {
         Pool {
             values,
-            value: None,
+            total: None,
         }
     }
 
@@ -240,18 +253,19 @@ impl Pool {
     }
 
     pub fn value(&self) -> i32 {
-        if let Some(v) = self.value {
+        if let Some(v) = self.total {
             v
         } else {
             self.sum()
         }
     }
 
-    pub fn set_value(&mut self, value: i32) {
-        self.value = Some(value)
+    pub fn set_total(&mut self, value: i32) {
+        self.total = Some(value)
     }
 }
 
+#[derive(Serialize)]
 pub struct Results {
     pub lhs: Pool,
     pub rhs: Option<Pool>,
