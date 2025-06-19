@@ -6,12 +6,12 @@ Another dice generator to turn text representation of dice rolls into generators
 
 * `!` - Explode. Reroll the dice if all the original dice are maximum value (e.g. `3d4!`). An optional value can be supplied and the dice are rerolled if they are all greater than or equal to the value.
 * `!!` - Explode Until. Same as explode, but keep rolling so long as all dice are maximum values
-* `*` - Explode Each. Reroll any die that is the maximum value 
+* `*` - Explode Each. Reroll any die that is the maximum value
 * `**` - Explode Each Until . Same as explode each, but keep rolling so long as the die is a maximum value. An optional value can be supplied and the die is rerolled if it is greater than or equal to the value.
 * `++<n>` - Add Each. Add the given value to each die rolled.
 * `--<n>` - Subtract Each. Subtract the given value from each die rolled.
 * `` `<n> `` - Take Low. Given a dice pool, keep the lowest N values.
-* `^<n>` - Take High. Given a dice pool, keep the highest N values. 
+* `^<n>` - Take High. Given a dice pool, keep the highest N values.
 * `~<n>` - Take Middle. Given a dice pool, keep the middle N values.
 * `ADV` - Advantage. Roll the dice pool twice, keeping the higher pool.
 * `DIS` - Disadvantage. Roll the dice pool twice, keeping the lower pool.
@@ -30,7 +30,7 @@ Another dice generator to turn text representation of dice rolls into generators
 
 ## Comparison Operators
 
-Two pools can be compared using the `>`, `<`, `>=`, `<=`, and `=` which return 1 for success and 0 for failure. In addition the comparison `<=>` return -1 if the left side is less than the right side, 1 if the right side is greater and 0 if they are equal. 
+Two pools can be compared using the `>`, `<`, `>=`, `<=`, and `=` which return 1 for success and 0 for failure. In addition the comparison `<=>` return -1 if the left side is less than the right side, 1 if the right side is greater and 0 if they are equal.
 
 ## Usage
 
@@ -48,7 +48,7 @@ FLAGS:
 
 OPTIONS:
     -n, --count <count>        Run the generator count number of times.
-    -d, --display <display>    Display the results: full, value, or chart
+    -d, --display <display>    Display the results: full, value, json, or chart
 
 ARGS:
     <INPUT>    A dice roll expression is required.
@@ -65,6 +65,25 @@ Display the generator, the individual dice rolled, and the calculated value. The
 3d4**{6}: 4, 4*, 4*, 3*, 4, 1*, 2 = 22 {17}
 ```
 
+### JSON
+
+Display the results as the raw JSON value.
+
+```
+> roll -d json d6
+[
+  {
+    "lhs":{
+      "values":[
+        {"value":1,"range":6,"add":0,"mul":1,"constant":false,"bonus":false,"keep":true,"hit":false,"sum":1}
+      ],
+      "total":1},
+    "rhs":null,
+    "value":0
+  }
+]
+```
+
 ### Values
 
 Display the rolled value. One value per line.
@@ -77,7 +96,7 @@ Display the rolled value. One value per line.
 
 ### Chart
 
-Generate a histogram of values. First column is value. Second column is the percentage chance to get that value or higher. 
+Generate a histogram of values. First column is value. Second column is the percentage chance to get that value or higher.
 
 ```
 > roll -n 1000000 -d chart 4d6\^3
@@ -103,11 +122,10 @@ Generate a histogram of values. First column is value. Second column is the perc
 
 * library interface
 * color code the results to the terminal (discards red, bonus green, etc)
-* ~~should `rand::thread_rng()` be moved out of `Value` struct?~~ 
+* ~~should `rand::thread_rng()` be moved out of `Value` struct?~~
   NOTE: passing in a random number generator as opposed to initializing it for each roll only resulted in a roughly 6% increase in performance
 * ~~arithmetic operators don't appear to be working~~
 
 ## Development Notes
 
-This is another take on a dice roller attempting to use a slightly more formal generator definition. This was also an opportunity to use the rust [nom](https://docs.rs/nom/6.0.1/nom/) library. 
-
+This is another take on a dice roller attempting to use a slightly more formal generator definition. This was also an opportunity to use the rust [nom](https://docs.rs/nom/6.0.1/nom/) library.
