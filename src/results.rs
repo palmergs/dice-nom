@@ -85,7 +85,7 @@ impl Value {
             mul: 1,
             bonus,
             keep: true,
-            hit: false,
+            hit: true,
             sum: value,
         }
     }
@@ -162,13 +162,6 @@ impl Value {
             } else {
                 self.sum = 0;
             }
-        }
-    }
-
-    pub fn mark_hit(&mut self) {
-        self.hit = true;
-        if self.keep {
-            self.sum = self.mul;
         }
     }
 }

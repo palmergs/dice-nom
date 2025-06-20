@@ -621,7 +621,7 @@ impl PoolOp {
     /// let old_sum = pool.sum();
     /// PoolOp::Advantage.apply_all(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 6);
-    /// assert_eq!(pool.bonus(), 3);
+    /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum <= pool.sum());
     ///
@@ -629,7 +629,7 @@ impl PoolOp {
     /// let old_sum = pool.sum();
     /// PoolOp::Disadvantage.apply_all(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 6);
-    /// assert_eq!(pool.bonus(), 3);
+    /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum >= pool.sum());
     ///
