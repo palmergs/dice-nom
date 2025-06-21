@@ -3,6 +3,8 @@ name = "dice-nom"
 version = "0.1.0"
 authors = ["Galen Palmer <palmergs@gmail.com>"]
 edition = "2021"
+description = "A library that utilizes the nom parser for randomly generating numbers to support role-playing games."
+license-file = "LICENSE.txt"
 
 [[bin]]
 name = "roll"
