@@ -1,14 +1,14 @@
 pub mod results;
 
 pub mod generators;
-use generators::{ Generator, PoolGenerator };
+use generators::{Generator, PoolGenerator};
 
 pub mod parsers;
 
 /// roller builds a simple `PoolGenerator` that can randomly generate dice rolls.
 ///
 /// * Examples
-/// 
+///
 /// ```
 /// use rand::prelude::*;
 /// let mut rng = rand::thread_rng();
@@ -16,7 +16,7 @@ pub mod parsers;
 /// assert_eq!(roller.count, 3);
 /// assert_eq!(roller.range, 6);
 /// assert_eq!(roller.op, Some(dice_nom::generators::PoolOp::ExplodeEachUntil(None)));
-/// 
+///
 /// let pool = roller.generate(&mut rng);
 /// assert!(pool.count() >= 3);
 /// assert!(pool.sum() >= 3);
@@ -29,32 +29,32 @@ pub fn roller(count: i32, range: i32, op: Option<&str>) -> PoolGenerator {
         },
         None => None,
     };
-    PoolGenerator{ count, range, op}
+    PoolGenerator { count, range, op }
 }
 
 /// parse builds a generator from the given input string. If any of the string
 /// can be parsed a generator is returned. If no generator can be built then
 /// an error is returned with the input string.
-/// 
+///
 /// * Examples
-/// 
+///
 /// ```
 /// use rand::prelude::*;
 /// let mut rng = rand::thread_rng();
-/// let gen = dice_nom::parse("2d4! + 2d6! < 3d8!");
-/// assert!(gen.is_ok());
-/// if let Ok(gen) = gen {
-///     let results = gen.generate(&mut rng);
+/// let g = dice_nom::parse("2d4! + 2d6! < 3d8!");
+/// assert!(g.is_ok());
+/// if let Ok(g) = g {
+///     let results = g.generate(&mut rng);
 ///     assert!(!results.rhs.is_none());
 /// }
-/// 
-/// let gen = dice_nom::parse("attack badger");
-/// assert!(!gen.is_ok());
-/// assert_eq!(gen, Err("attack badger"));
+///
+/// let g = dice_nom::parse("attack badger");
+/// assert!(!g.is_ok());
+/// assert_eq!(g, Err("attack badger"));
 /// ```
 pub fn parse(input: &str) -> Result<Generator, &str> {
     match parsers::generator_parser(input) {
-        Ok((_, gen)) => Ok(gen),
+        Ok((_, g)) => Ok(g),
         Err(_) => Err(input),
     }
 }

@@ -28,7 +28,7 @@ impl Generator {
     /// use dice_nom::generators::*;
     /// use dice_nom::results::*;
     /// use rand::prelude::*;
-    /// let gen = Generator{
+    /// let g = Generator{
     ///     succ: SuccGenerator{
     ///         hits: HitsGenerator{
     ///             expr: ExprGenerator{
@@ -48,7 +48,7 @@ impl Generator {
     ///     op: None
     /// };
     /// let mut rng = rand::thread_rng();
-    /// let pool = gen.generate(&mut rng);
+    /// let pool = g.generate(&mut rng);
     /// ```
     pub fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> Results {
         let lhs = self.succ.generate(rng);
@@ -208,7 +208,7 @@ impl HitsGenerator {
     /// use dice_nom::generators::*;
     /// use dice_nom::results::*;
     /// use rand::prelude::*;
-    /// let gen = HitsGenerator{
+    /// let g = HitsGenerator{
     ///     expr: ExprGenerator{
     ///         terms: vec![ArithTermGenerator{
     ///             op: ArithOp::ImplicitAdd,
@@ -222,7 +222,7 @@ impl HitsGenerator {
     ///     op: Some(TargetOp::TargetHigh(4))
     /// };
     /// let mut rng = rand::thread_rng();
-    /// let pool = gen.generate(&mut rng);
+    /// let pool = g.generate(&mut rng);
     /// // TODO: this assertion is a bit of a risk since there's a chance of no hits
     /// assert!(pool.hits() > 0);
     /// ```
@@ -387,8 +387,8 @@ impl PoolGenerator {
     /// use dice_nom::results::Pool;
     /// use rand::prelude::*;
     /// let mut rng = rand::thread_rng();
-    /// let gen = PoolGenerator{ count: 3, range: 6, op: Some(PoolOp::ExplodeEach(None)) };
-    /// let pool = gen.generate(&mut rng);
+    /// let g = PoolGenerator{ count: 3, range: 6, op: Some(PoolOp::ExplodeEach(None)) };
+    /// let pool = g.generate(&mut rng);
     /// assert!(pool.count() >= 3);
     /// ```
     pub fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> Pool {
@@ -430,7 +430,11 @@ impl fmt::Display for PoolOp {
         match self {
             PoolOp::Explode(n) => {
                 if let Some(n) = *n {
-                    write!(f, "!{}", n)
+                    if n > 1 {
+                        write!(f, "!{}", n)
+                    } else {
+                        write!(f, "!")
+                    }
                 } else {
                     write!(f, "!")
                 }
@@ -438,7 +442,11 @@ impl fmt::Display for PoolOp {
 
             PoolOp::ExplodeUntil(n) => {
                 if let Some(n) = *n {
-                    write!(f, "!!{}", n)
+                    if n > 1 {
+                        write!(f, "!!{}", n)
+                    } else {
+                        write!(f, "!!")
+                    }
                 } else {
                     write!(f, "!!")
                 }
@@ -446,7 +454,11 @@ impl fmt::Display for PoolOp {
 
             PoolOp::ExplodeEach(n) => {
                 if let Some(n) = *n {
-                    write!(f, "*{}", n)
+                    if n > 1 {
+                        write!(f, "*{}", n)
+                    } else {
+                        write!(f, "*")
+                    }
                 } else {
                     write!(f, "*")
                 }
@@ -454,7 +466,11 @@ impl fmt::Display for PoolOp {
 
             PoolOp::ExplodeEachUntil(n) => {
                 if let Some(n) = *n {
-                    write!(f, "**{}", n)
+                    if n > 1 {
+                        write!(f, "**{}", n)
+                    } else {
+                        write!(f, "**")
+                    }
                 } else {
                     write!(f, "**")
                 }
@@ -530,7 +546,7 @@ impl PoolOp {
         match self {
             PoolOp::ExplodeEach(n) => {
                 let last = *pool.values.last().unwrap();
-                let n = n.unwrap_or(last.range);
+                let n = self.safe_n(n, last.range);
                 if last.value >= n {
                     let new_roll = Value::random(last.range, true, rng);
                     pool.values.push(new_roll);
@@ -539,7 +555,7 @@ impl PoolOp {
 
             PoolOp::ExplodeEachUntil(n) => loop {
                 let last = *pool.values.last().unwrap();
-                let n = n.unwrap_or(last.range);
+                let n = self.safe_n(n, last.range);
                 if last.value >= n {
                     let new_roll = Value::random(last.range, true, rng);
                     pool.values.push(new_roll);
@@ -562,6 +578,19 @@ impl PoolOp {
                 pool.values.push(last);
             }
             _ => (),
+        }
+    }
+
+    fn safe_n(&self, n: &Option<i32>, range: i32) -> i32 {
+        match *n {
+            Some(n) => {
+                if n <= 1 || n > range {
+                    range
+                } else {
+                    n
+                }
+            }
+            None => range,
         }
     }
 
@@ -653,7 +682,7 @@ impl PoolOp {
         match self {
             PoolOp::Explode(n) => {
                 let range = pool.range();
-                let n = n.unwrap_or(range);
+                let n = self.safe_n(n, range);
                 let explode = pool.values.iter().all(|&v| v.value >= n);
                 if explode {
                     for _ in 0..cnt {
@@ -665,7 +694,7 @@ impl PoolOp {
 
             PoolOp::ExplodeUntil(n) => {
                 let range = pool.range();
-                let n = n.unwrap_or(range);
+                let n = self.safe_n(n, range);
                 let mut explode = pool.values.iter().all(|&v| v.value >= n);
                 while explode {
                     for _ in 0..cnt {

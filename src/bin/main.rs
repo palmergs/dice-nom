@@ -30,35 +30,35 @@ fn main() {
     let args = Args::parse();
     let input = args.input;
 
-    let gen = match generator_parser(input.as_ref()) {
-        Ok((_, gen)) => gen,
+    let g = match generator_parser(input.as_ref()) {
+        Ok((_, g)) => g,
         Err(_) => panic!("could not parse `{}`", input),
     };
 
     match args.display {
         Some(s) => match s.as_str() {
-            "full" => display_results(&gen, args.count.unwrap_or(1)),
-            "json" => display_json(&gen, args.count.unwrap_or(1)),
-            "value" => display_value(&gen, args.count.unwrap_or(1)),
-            "chart" => display_chart(&gen, args.count.unwrap_or(10_000)),
-            _ => display_results(&gen, args.count.unwrap_or(1)),
+            "full" => display_results(&g, args.count.unwrap_or(1)),
+            "json" => display_json(&g, args.count.unwrap_or(1)),
+            "value" => display_value(&g, args.count.unwrap_or(1)),
+            "chart" => display_chart(&g, args.count.unwrap_or(10_000)),
+            _ => display_results(&g, args.count.unwrap_or(1)),
         },
-        _ => display_results(&gen, args.count.unwrap_or(1)),
+        _ => display_results(&g, args.count.unwrap_or(1)),
     }
 }
 
-fn display_results(gen: &Generator, n: u32) {
+fn display_results(g: &Generator, n: u32) {
     let mut rng = rand::thread_rng();
     for _ in 0..n {
-        println!("{}: {}", gen, gen.generate(&mut rng));
+        println!("{}: {}", g, g.generate(&mut rng));
     }
 }
 
-fn display_json(gen: &Generator, n: u32) {
+fn display_json(g: &Generator, n: u32) {
     let mut rng = rand::thread_rng();
     let mut results_array = Vec::new();
     for _ in 0..n {
-        results_array.push(gen.generate(&mut rng));
+        results_array.push(g.generate(&mut rng));
     }
     let json = serde_json::to_string(&results_array);
     match json {
@@ -67,15 +67,15 @@ fn display_json(gen: &Generator, n: u32) {
     }
 }
 
-fn display_value(gen: &Generator, n: u32) {
+fn display_value(g: &Generator, n: u32) {
     let mut rng = rand::thread_rng();
     for _ in 0..n {
-        println!("{}", gen.generate(&mut rng).sum());
+        println!("{}", g.generate(&mut rng).sum());
     }
 }
 
-fn display_chart(gen: &Generator, num: u32) {
-    let histo = Histo::build(gen, num);
+fn display_chart(g: &Generator, num: u32) {
+    let histo = Histo::build(g, num);
 
     let mut cnt = num as f64;
     let width = if histo.max_cnt < 50 {
@@ -108,7 +108,7 @@ struct Histo {
 }
 
 impl Histo {
-    pub fn build(gen: &Generator, count: u32) -> Histo {
+    pub fn build(g: &Generator, count: u32) -> Histo {
         let mut histo = Histo {
             min: MAX,
             max: 0,
@@ -117,7 +117,7 @@ impl Histo {
         };
         let mut rng = rand::thread_rng();
         for _ in 0..count {
-            let v = gen.generate(&mut rng).sum();
+            let v = g.generate(&mut rng).sum();
             if v < histo.min {
                 histo.min = v;
             }

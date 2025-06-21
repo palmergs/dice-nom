@@ -1,13 +1,13 @@
 extern crate nom;
 
 use nom::{
+    IResult,
     branch::alt,
     bytes::complete::{is_a, tag},
     character::complete::{char, digit0, digit1, space0},
     combinator::opt,
     multi::fold_many1,
     sequence::{delimited, preceded, separated_pair, tuple},
-    IResult,
 };
 
 use super::generators::{
@@ -23,13 +23,13 @@ use super::generators::{
 /// ```
 /// use dice_nom::parsers::generator_parser;
 /// use dice_nom::generators::*;
-/// let (input, gen) = generator_parser("3d8").unwrap();
+/// let (input, g) = generator_parser("3d8").unwrap();
 /// assert_eq!(input, "");
-/// assert_eq!(gen.op, None);
+/// assert_eq!(g.op, None);
 ///
-/// let (input, gen) = generator_parser("3d8 > 4d6").unwrap();
+/// let (input, g) = generator_parser("3d8 > 4d6").unwrap();
 /// assert_eq!(input, "");
-/// assert_eq!(gen.op, Some(ComparisonOp::GT(
+/// assert_eq!(g.op, Some(ComparisonOp::GT(
 ///     SuccGenerator{
 ///         hits: HitsGenerator{
 ///             expr: ExprGenerator{
@@ -39,7 +39,7 @@ use super::generators::{
 ///                         term: TermGenerator::Pool(PoolGenerator {
 ///                             count: 4,
 ///                             range: 6,
-///                             op: None    
+///                             op: None
 ///                         })
 ///                     }
 ///                 ]
