@@ -15,15 +15,33 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[command(version = VERSION)]
 #[command(about = "Generates random dice rolls")]
 struct Args {
-    /// Display the results: full, value, or chart
+    /// Display the results: full, value, json, or chart
     #[arg(short, long)]
     display: Option<String>,
+
+    /// Output format: json or text (defaults to text)
+    #[arg(short = 'f', long)]
+    format: Option<String>,
 
     /// Run the generator count number of times.
     #[arg(short, long)]
     count: Option<u32>,
 
     input: String,
+}
+
+fn parse_display_and_format(display: &Option<String>, format: &Option<String>) -> (String, String) {
+    match (display.as_deref(), format.as_deref()) {
+        (Some("json"), _) => ("full".to_string(), "json".to_string()),
+        (display_opt, Some(format_str)) => (
+            display_opt.unwrap_or("full").to_string(),
+            format_str.to_string(),
+        ),
+        (Some(display_str), None) if display_str != "json" => {
+            (display_str.to_string(), "text".to_string())
+        }
+        _ => ("full".to_string(), "text".to_string()),
+    }
 }
 
 fn main() {
@@ -35,14 +53,15 @@ fn main() {
         Err(_) => panic!("could not parse `{}`", input),
     };
 
-    match args.display {
-        Some(s) => match s.as_str() {
-            "full" => display_results(&g, args.count.unwrap_or(1)),
-            "json" => display_json(&g, args.count.unwrap_or(1)),
-            "value" => display_value(&g, args.count.unwrap_or(1)),
-            "chart" => display_chart(&g, args.count.unwrap_or(10_000)),
-            _ => display_results(&g, args.count.unwrap_or(1)),
-        },
+    let (display_mode, output_format) = parse_display_and_format(&args.display, &args.format);
+
+    match (display_mode.as_str(), output_format.as_str()) {
+        ("full", "text") => display_results(&g, args.count.unwrap_or(1)),
+        ("full", "json") => display_json(&g, args.count.unwrap_or(1)),
+        ("value", "text") => display_value(&g, args.count.unwrap_or(1)),
+        ("value", "json") => display_value_json(&g, args.count.unwrap_or(1)),
+        ("chart", "text") => display_chart(&g, args.count.unwrap_or(10_000)),
+        ("chart", "json") => display_chart_json(&g, args.count.unwrap_or(10_000)),
         _ => display_results(&g, args.count.unwrap_or(1)),
     }
 }
@@ -71,6 +90,19 @@ fn display_value(g: &Generator, n: u32) {
     let mut rng = rand::thread_rng();
     for _ in 0..n {
         println!("{}", g.generate(&mut rng).sum());
+    }
+}
+
+fn display_value_json(g: &Generator, n: u32) {
+    let mut rng = rand::thread_rng();
+    let mut values = Vec::new();
+    for _ in 0..n {
+        values.push(g.generate(&mut rng).sum());
+    }
+    let json = serde_json::to_string(&values);
+    match json {
+        Ok(json) => println!("{}", json),
+        Err(err) => println!("{{\"error\": \"{}\"}}", err),
     }
 }
 
@@ -138,5 +170,26 @@ impl Histo {
             }
         }
         histo
+    }
+}
+
+fn display_chart_json(g: &Generator, num: u32) {
+    let histo = Histo::build(g, num);
+
+    let mut chart_data = Vec::new();
+    for k in histo.min..=histo.max {
+        let count = histo.map.get(&k).unwrap_or(&0);
+        let percentage = (*count as f64 / num as f64) * 100.0;
+        chart_data.push(serde_json::json!({
+            "value": k,
+            "count": count,
+            "percentage": percentage
+        }));
+    }
+
+    let json = serde_json::to_string(&chart_data);
+    match json {
+        Ok(json) => println!("{}", json),
+        Err(err) => println!("{{\"error\": \"{}\"}}", err),
     }
 }
