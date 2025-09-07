@@ -48,7 +48,8 @@ FLAGS:
 
 OPTIONS:
     -n, --count <count>        Run the generator count number of times.
-    -d, --display <display>    Display the results: full, value, json, or chart
+    -d, --display <display>    Display the results: full, value, json (deprecated), or chart
+    -f, --format <format>      Render the results: text (default) or json
 
 ARGS:
     <INPUT>    A dice roll expression is required.
@@ -70,7 +71,7 @@ Display the generator, the individual dice rolled, and the calculated value. The
 Display the results as the raw JSON value.
 
 ```
-> roll -d json d6
+> roll -f json d6
 [
   {
     "lhs":{
