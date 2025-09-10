@@ -3,12 +3,201 @@ use serde::Serialize;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+pub struct Die {
+    /// value on the physical die
+    pub rolled: i32,
+
+    /// range of the physical die
+    pub range: i32,
+
+    /// calculated value
+    pub value: i32,
+}
+
+impl fmt::Display for Die {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.rolled, self.range)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum DiscardOp {
+    Highest(i32),
+    Lowest(i32),
+}
+
+impl Die {
+    /// roll dice to achieve an equal distribution over the expected range
+    /// For ranges that are "standard" simply generate a die roll. For
+    /// percentage dice they are rolled in order (thousands, hundreds, tens, ones)
+    /// so the result is more than one die roll. For non-standard values,
+    /// a die roll is generated for the next largest standard value and
+    /// anything outside that range is discarded. The last die in the vector
+    /// should be the one that was kept.
+    ///
+    /// * Examples:
+    ///
+    /// ```
+    /// use dice_nom::results::Die;
+    /// use rand::prelude::*;
+    /// let mut rng = rand::thread_rng();
+    /// let dice = Die::roll(1000, None, &mut rng);
+    /// assert!(dice.is_some());
+    /// assert_eq!(dice.as_ref().unwrap().len(), 3);
+    /// let value = dice.unwrap().iter().map(|d| d.value).sum::<i32>();
+    /// assert!(value >= 0);
+    /// assert!(value < 1000);
+    /// ```
+    pub fn roll<R: Rng + ?Sized>(
+        range: i32,
+        discard: Option<DiscardOp>,
+        rng: &mut R,
+    ) -> Option<Vec<Die>> {
+        let mut accum = Vec::new();
+        match range {
+            2 => Die::roll_with_discard(2, 6, discard, &mut accum, rng),
+            3 => Die::roll_with_discard(3, 6, discard, &mut accum, rng),
+            4 => Die::roll_with_discard(4, 4, discard, &mut accum, rng),
+            5 => Die::roll_with_discard(5, 10, discard, &mut accum, rng),
+            6 => Die::roll_with_discard(6, 6, discard, &mut accum, rng),
+            8 => Die::roll_with_discard(8, 8, discard, &mut accum, rng),
+            10 => Die::roll_with_discard(10, 10, discard, &mut accum, rng),
+            12 => Die::roll_with_discard(12, 12, discard, &mut accum, rng),
+            20 => Die::roll_with_discard(20, 20, discard, &mut accum, rng),
+            100 => {
+                Die::roll_with_discard(100, 100, discard, &mut accum, rng);
+                Die::roll_with_discard(10, 10, discard, &mut accum, rng);
+            }
+            1000 => {
+                Die::roll_with_discard(1000, 1000, discard, &mut accum, rng);
+                Die::roll_with_discard(100, 100, discard, &mut accum, rng);
+                Die::roll_with_discard(10, 10, discard, &mut accum, rng);
+            }
+            10000 => {
+                Die::roll_with_discard(10000, 10000, discard, &mut accum, rng);
+                Die::roll_with_discard(1000, 1000, discard, &mut accum, rng);
+                Die::roll_with_discard(100, 100, discard, &mut accum, rng);
+                Die::roll_with_discard(10, 10, discard, &mut accum, rng);
+            }
+            _ => {
+                if range < 10 {
+                    Die::roll_with_discard(range, 10, discard, &mut accum, rng)
+                } else if range < 20 {
+                    Die::roll_with_discard(range, 20, discard, &mut accum, rng)
+                }
+            }
+        }
+
+        if accum.len() > 0 { Some(accum) } else { None }
+    }
+
+    fn roll_with_discard<R: Rng + ?Sized>(
+        range: i32,
+        die_range: i32,
+        discard: Option<DiscardOp>,
+        dice: &mut Vec<Die>,
+        rng: &mut R,
+    ) {
+        let mut accum = Vec::new();
+        Die::roll_until_success(range, die_range, &mut accum, rng);
+        let mut last_idx = accum.len() - 1;
+        match discard {
+            Some(DiscardOp::Highest(n)) => {
+                let mut min = accum[0].0;
+                for _ in 0..n {
+                    Die::roll_until_success(range, die_range, &mut accum, rng);
+                    let curr_idx = accum.len() - 1;
+                    if accum[accum.len() - 1].0 < min {
+                        min = accum[accum.len() - 1].0;
+                        accum[last_idx].1 = None;
+                        last_idx = curr_idx;
+                    } else {
+                        accum[curr_idx].1 = None;
+                    }
+                }
+            }
+            Some(DiscardOp::Lowest(n)) => {
+                let mut max = accum[0].0;
+                for _ in 0..n {
+                    Die::roll_until_success(range, die_range, &mut accum, rng);
+                    let curr_idx = accum.len() - 1;
+                    if accum[accum.len() - 1].0 > max {
+                        max = accum[accum.len() - 1].0;
+                        accum[last_idx].1 = None;
+                        last_idx = curr_idx;
+                    } else {
+                        accum[curr_idx].1 = None;
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        for die in accum {
+            match die {
+                (rolled, Some(value)) => dice.push(Die {
+                    rolled,
+                    range,
+                    value,
+                }),
+                (rolled, None) => dice.push(Die {
+                    rolled,
+                    range,
+                    value: 0,
+                }),
+            }
+        }
+    }
+
+    fn roll_until_success<R: Rng + ?Sized>(
+        range: i32,
+        die_range: i32,
+        accum: &mut Vec<(i32, Option<i32>)>,
+        rng: &mut R,
+    ) {
+        loop {
+            let result = Die::roll_in_range(range, die_range, rng);
+            accum.push(result);
+            if result.1.is_some() {
+                break;
+            }
+        }
+    }
+
+    fn roll_in_range<R: Rng + ?Sized>(
+        range: i32,
+        die_range: i32,
+        rng: &mut R,
+    ) -> (i32, Option<i32>) {
+        let value = Die::roll_one(die_range, rng);
+        if value > range {
+            (value, None)
+        } else {
+            (value, Some(value))
+        }
+    }
+
+    fn roll_one<R: Rng + ?Sized>(range: i32, rng: &mut R) -> i32 {
+        match range {
+            10000 => rng.gen_range(0..10) * 1000,
+            1000 => rng.gen_range(0..10) * 100,
+            100 => rng.gen_range(0..10) * 10,
+            10 => rng.gen_range(0..10),
+            _ => rng.gen_range(0..range) + 1,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Value {
     /// value of this roll (or constant) before modified
     pub value: i32,
 
     /// range of this roll
     pub range: i32,
+
+    /// dice that were rolled
+    pub dice: Option<Vec<Die>>,
 
     /// modifier to the value; value + add = sum if kept == true
     add: i32,
@@ -65,6 +254,7 @@ impl Value {
         Value {
             value,
             range: value,
+            dice: None,
             add: 0,
             mul: 1,
             constant: true,
@@ -75,31 +265,60 @@ impl Value {
         }
     }
 
+    /// Helper for a common case
+    pub fn d6(value: i32) -> Value {
+        Value {
+            value,
+            range: 6,
+            dice: Some(vec![Die {
+                rolled: value,
+                value,
+                range: 6,
+            }]),
+            add: 0,
+            mul: 1,
+            constant: false,
+            bonus: false,
+            keep: true,
+            hit: false,
+            sum: value,
+        }
+    }
+
+    /// build a Value with a random number. The number rolled should mimic actual dice
+    /// so the logic of rolling a random number is deferred to the Die.
+    ///
+    /// * Examples:
+    ///
+    /// ```
+    /// use dice_nom::results::{ Value, Die };
+    /// use rand::prelude::*;
+    /// let mut rng = rand::thread_rng();
+    /// let val = Value::random(6, false, &mut rng);
+    /// assert_eq!(val.range, 6);
+    /// assert!(val.value >= 1);
+    /// assert!(val.value <= 6);
+    /// assert!(val.dice.is_some());
+    /// assert_eq!(val.dice.as_ref().unwrap().len(), 1);
+    /// assert_eq!(val.dice.as_ref().unwrap()[0].range, 6);
+    /// assert!(val.dice.as_ref().unwrap()[0].rolled >= 1);
+    /// assert!(val.dice.as_ref().unwrap()[0].rolled <= 6);
+    /// assert!(val.dice.as_ref().unwrap()[0].value >= 1);
+    /// assert!(val.dice.as_ref().unwrap()[0].value <= 6);
+    /// ```
     pub fn random<R: Rng + ?Sized>(range: i32, bonus: bool, rng: &mut R) -> Value {
-        let value = rng.gen_range(0..range) + 1;
+        let dice = Die::roll(range, None, rng).unwrap_or(vec![]);
+        let value = dice.iter().map(|d| d.value).sum::<i32>();
         Value {
             value,
             range,
+            dice: Some(dice),
             constant: false,
             add: 0,
             mul: 1,
             bonus,
             keep: true,
             hit: true,
-            sum: value,
-        }
-    }
-
-    pub fn random_with_value(value: i32, range: i32, bonus: bool) -> Value {
-        Value {
-            value,
-            range,
-            constant: false,
-            add: 0,
-            mul: 1,
-            bonus,
-            keep: true,
-            hit: false,
             sum: value,
         }
     }
@@ -219,7 +438,7 @@ impl Pool {
             self.values
                 .iter()
                 .filter(|&v| !v.constant)
-                .map(|&v| v.range)
+                .map(|v| v.range)
                 .max()
                 .unwrap()
         }
@@ -230,19 +449,32 @@ impl Pool {
     }
 
     pub fn sum(&self) -> i32 {
-        self.values.iter().map(|&v| v.sum()).sum()
+        self.values.iter().map(|v| v.sum()).sum()
     }
 
     pub fn kept(&self) -> usize {
-        self.values.iter().filter(|&v| !v.is_discarded()).count()
+        self.values.iter().filter(|v| !v.is_discarded()).count()
+    }
+
+    pub fn values(&self) -> Vec<Option<i32>> {
+        self.values
+            .iter()
+            .map(|v| {
+                if v.is_discarded() {
+                    None
+                } else {
+                    Some(v.sum())
+                }
+            })
+            .collect()
     }
 
     pub fn hits(&self) -> usize {
-        self.values.iter().filter(|&v| v.is_hit()).count()
+        self.values.iter().filter(|v| v.is_hit()).count()
     }
 
     pub fn bonus(&self) -> usize {
-        self.values.iter().filter(|&v| v.is_bonus()).count()
+        self.values.iter().filter(|v| v.is_bonus()).count()
     }
 
     pub fn value(&self) -> i32 {
@@ -251,6 +483,14 @@ impl Pool {
         } else {
             self.sum()
         }
+    }
+
+    pub fn last_value(&self) -> i32 {
+        self.values[self.count() - 1].value
+    }
+
+    pub fn last_range(&self) -> i32 {
+        self.values[self.count() - 1].range
     }
 
     pub fn set_total(&mut self, value: i32) {

@@ -223,7 +223,6 @@ impl HitsGenerator {
     /// };
     /// let mut rng = rand::thread_rng();
     /// let pool = g.generate(&mut rng);
-    /// // TODO: this assertion is a bit of a risk since there's a chance of no hits
     /// assert!(pool.hits() > 0);
     /// ```
     pub fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> Pool {
@@ -513,30 +512,29 @@ impl PoolOp {
     /// use dice_nom::results::{ Value, Pool };
     /// use rand::prelude::*;
     /// let mut rng = rand::thread_rng();
-    /// let val = Value::random_with_value(6, 6, false);
     ///
-    /// let mut pool = Pool::new_with_values(vec![val]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6)]);
     /// PoolOp::ExplodeEach(None).apply_last(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 2); // value is max so it should "explode"
     /// assert_eq!(pool.bonus(), 1); // rerolled value is considered bonus
     /// assert_eq!(pool.kept(), 2); // all values are kept
     /// assert!(pool.sum() > 6); // new roll is added to existing roll
     ///
-    /// let mut pool = Pool::new_with_values(vec![val]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6)]);
     /// PoolOp::ExplodeEachUntil(None).apply_last(&mut pool, &mut rng);
     /// assert!(pool.count() >= 2); // value is max so it should "explode"; may continue to explode
     ///
-    /// let mut pool = Pool::new_with_values(vec![val]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(4)]);
     /// PoolOp::AddEach(Some(4)).apply_last(&mut pool, &mut rng);
-    /// assert_eq!(pool.sum(), 10);
+    /// assert_eq!(pool.sum(), 8);
     /// assert_eq!(pool.values[0].modifier(), 4);
-    /// assert_eq!(pool.values[0].sum(), 10);
+    /// assert_eq!(pool.values[0].sum(), 8);
     ///
-    /// let mut pool = Pool::new_with_values(vec![val]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(4)]);
     /// PoolOp::SubEach(Some(4)).apply_last(&mut pool, &mut rng);
-    /// assert_eq!(pool.sum(), 2);
+    /// assert_eq!(pool.sum(), 0);
     /// assert_eq!(pool.values[0].modifier(), -4);
-    /// assert_eq!(pool.values[0].sum(), 2);
+    /// assert_eq!(pool.values[0].sum(), 0);
     /// ```
     pub fn apply_last<R: Rng + ?Sized>(&self, pool: &mut Pool, rng: &mut R) {
         if pool.count() == 0 {
@@ -545,19 +543,17 @@ impl PoolOp {
 
         match self {
             PoolOp::ExplodeEach(n) => {
-                let last = *pool.values.last().unwrap();
-                let n = self.safe_n(n, last.range);
-                if last.value >= n {
-                    let new_roll = Value::random(last.range, true, rng);
+                let n = self.safe_n(n, pool.last_range());
+                if pool.last_value() >= n {
+                    let new_roll = Value::random(pool.last_range(), true, rng);
                     pool.values.push(new_roll);
                 }
             }
 
             PoolOp::ExplodeEachUntil(n) => loop {
-                let last = *pool.values.last().unwrap();
-                let n = self.safe_n(n, last.range);
-                if last.value >= n {
-                    let new_roll = Value::random(last.range, true, rng);
+                let n = self.safe_n(n, pool.last_range());
+                if pool.last_value() >= n {
+                    let new_roll = Value::random(pool.last_range(), true, rng);
                     pool.values.push(new_roll);
                 } else {
                     break;
@@ -605,48 +601,43 @@ impl PoolOp {
     /// use dice_nom::results::{ Value, Pool };
     /// use rand::prelude::*;
     /// let mut rng = rand::thread_rng();
-    /// let val1 = Value::random_with_value(6, 6, false);
-    /// let val2 = Value::random_with_value(5, 6, false);
-    /// let val3 = Value::random_with_value(1, 6, false);
-    /// let val4 = Value::random_with_value(6, 6, false);
-    /// let val5 = Value::random_with_value(1, 6, false);
     ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5)]);
     /// PoolOp::Explode(Some(5)).apply_all(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 2);
     /// assert_eq!(pool.kept(), 4);
     /// assert!(pool.sum() >= 13);
     ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5)]);
     /// PoolOp::ExplodeUntil(Some(5)).apply_all(&mut pool, &mut rng);
     /// assert!(pool.count() >= 4);
     /// assert!(pool.bonus() >= 2);
     /// assert!(pool.kept() >= 4);
     /// assert!(pool.sum() >= 13);
     ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5), Value::d6(1), Value::d6(4)]);
     /// PoolOp::TakeHigh(2).apply_all(&mut pool, &mut rng);
-    /// assert_eq!(pool.count(), 4);
-    /// assert_eq!(pool.bonus(), 0);
-    /// assert_eq!(pool.kept(), 2);
-    /// assert_eq!(pool.sum(), 12);
-    ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4]);
-    /// PoolOp::TakeLow(2).apply_all(&mut pool, &mut rng);
-    /// assert_eq!(pool.count(), 4);
-    /// assert_eq!(pool.bonus(), 0);
-    /// assert_eq!(pool.kept(), 2);
-    /// assert_eq!(pool.sum(), 6);
-    ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4]);
-    /// PoolOp::TakeMid(2).apply_all(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 4);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 11);
     ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5), Value::d6(1), Value::d6(4)]);
+    /// PoolOp::TakeLow(2).apply_all(&mut pool, &mut rng);
+    /// assert_eq!(pool.count(), 4);
+    /// assert_eq!(pool.bonus(), 0);
+    /// assert_eq!(pool.kept(), 2);
+    /// assert_eq!(pool.sum(), 5);
+    ///
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5), Value::d6(1), Value::d6(4)]);
+    /// PoolOp::TakeMid(2).apply_all(&mut pool, &mut rng);
+    /// assert_eq!(pool.count(), 4);
+    /// assert_eq!(pool.bonus(), 0);
+    /// assert_eq!(pool.kept(), 2);
+    /// assert_eq!(pool.sum(), 9);
+    ///
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5), Value::d6(1)]);
     /// let old_sum = pool.sum();
     /// PoolOp::Advantage.apply_all(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 6);
@@ -654,7 +645,7 @@ impl PoolOp {
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum <= pool.sum());
     ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5), Value::d6(1)]);
     /// let old_sum = pool.sum();
     /// PoolOp::Disadvantage.apply_all(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 6);
@@ -662,16 +653,17 @@ impl PoolOp {
     /// assert_eq!(pool.kept(), 3);
     /// assert!(old_sum >= pool.sum());
     ///
-    /// let mut pool = Pool::new_with_values(vec![val1, val2, val3, val4, val5]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5), Value::d6(6), Value::d6(2), Value::d6(2)]);
     /// PoolOp::BestGroup.apply_all(&mut pool, &mut rng);
     /// assert_eq!(pool.count(), 5);
     /// assert_eq!(pool.bonus(), 0);
     /// assert_eq!(pool.kept(), 2);
     /// assert_eq!(pool.sum(), 12);
     ///
-    /// let mut pool = Pool::new_with_values(vec![val2, val3, val4, val5]);
+    /// let mut pool = Pool::new_with_values(vec![Value::d6(5), Value::d6(6), Value::d6(2), Value::d6(2)]);
     /// PoolOp::BestGroup.apply_all(&mut pool, &mut rng);
-    /// assert_eq!(pool.sum(), 2);
+    /// assert_eq!(pool.kept(), 2);
+    /// assert_eq!(pool.sum(), 4);
     /// ```
     pub fn apply_all<R: Rng + ?Sized>(&self, pool: &mut Pool, rng: &mut R) {
         let cnt = pool.count();
@@ -683,7 +675,7 @@ impl PoolOp {
             PoolOp::Explode(n) => {
                 let range = pool.range();
                 let n = self.safe_n(n, range);
-                let explode = pool.values.iter().all(|&v| v.value >= n);
+                let explode = pool.values.iter().all(|v| v.value >= n);
                 if explode {
                     for _ in 0..cnt {
                         let roll = Value::random(range, true, rng);
@@ -695,12 +687,11 @@ impl PoolOp {
             PoolOp::ExplodeUntil(n) => {
                 let range = pool.range();
                 let n = self.safe_n(n, range);
-                let mut explode = pool.values.iter().all(|&v| v.value >= n);
+                let mut explode = pool.values.iter().all(|v| v.value >= n);
                 while explode {
                     for _ in 0..cnt {
-                        let roll = Value::random(range, true, rng);
-                        pool.values.push(roll);
-                        if roll.value < n {
+                        pool.values.push(Value::random(range, true, rng));
+                        if pool.last_value() < n {
                             explode = false;
                         }
                     }
@@ -795,17 +786,17 @@ impl PoolOp {
                 let mut max_val = 0;
                 let mut max_run = 0;
                 let mut curr_run = 0;
-                for idx in 0..cnt {
-                    let val = pool.values[idx];
-                    if !val.is_discarded() {
-                        if last_val == val.value {
+                let values = pool.values();
+                for val in values.into_iter() {
+                    if let Some(n) = val {
+                        if last_val == n {
                             curr_run += 1;
                             if curr_run > max_run {
                                 max_run = curr_run;
                                 max_val = last_val;
                             }
                         } else {
-                            last_val = val.value;
+                            last_val = n;
                             curr_run = 0;
                         }
                     }

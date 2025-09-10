@@ -138,7 +138,7 @@ fn pare_parser(input: &str) -> IResult<&str, ExprGenerator> {
 pub fn expr_parser(input: &str) -> IResult<&str, ExprGenerator> {
     match fold_many1(
         arith_term_parser,
-        Vec::new(),
+        Vec::new,
         |mut acc: Vec<_>, arith_term| {
             acc.push(arith_term);
             acc
