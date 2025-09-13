@@ -11,7 +11,7 @@ pub mod parsers;
 ///
 /// ```
 /// use rand::prelude::*;
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 /// let roller = dice_nom::roller(3, 6, Some("**"));
 /// assert_eq!(roller.count, 3);
 /// assert_eq!(roller.range, 6);
@@ -40,7 +40,7 @@ pub fn roller(count: i32, range: i32, op: Option<&str>) -> PoolGenerator {
 ///
 /// ```
 /// use rand::prelude::*;
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 /// let g = dice_nom::parse("2d4! + 2d6! < 3d8!");
 /// assert!(g.is_ok());
 /// if let Ok(g) = g {

@@ -47,7 +47,7 @@ impl Generator {
     ///     },
     ///     op: None
     /// };
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     /// let pool = g.generate(&mut rng);
     /// ```
     pub fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> Results {
@@ -221,7 +221,7 @@ impl HitsGenerator {
     ///     },
     ///     op: Some(TargetOp::TargetHigh(4))
     /// };
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     /// let pool = g.generate(&mut rng);
     /// assert!(pool.hits() > 0);
     /// ```
@@ -385,7 +385,7 @@ impl PoolGenerator {
     /// use dice_nom::generators::{PoolGenerator, PoolOp};
     /// use dice_nom::results::Pool;
     /// use rand::prelude::*;
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     /// let g = PoolGenerator{ count: 3, range: 6, op: Some(PoolOp::ExplodeEach(None)) };
     /// let pool = g.generate(&mut rng);
     /// assert!(pool.count() >= 3);
@@ -511,7 +511,7 @@ impl PoolOp {
     /// use dice_nom::generators::PoolOp;
     /// use dice_nom::results::{ Value, Pool };
     /// use rand::prelude::*;
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     ///
     /// let mut pool = Pool::new_with_values(vec![Value::d6(6)]);
     /// PoolOp::ExplodeEach(None).apply_last(&mut pool, &mut rng);
@@ -600,7 +600,7 @@ impl PoolOp {
     /// use dice_nom::generators::PoolOp;
     /// use dice_nom::results::{ Value, Pool };
     /// use rand::prelude::*;
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     ///
     /// let mut pool = Pool::new_with_values(vec![Value::d6(6), Value::d6(5)]);
     /// PoolOp::Explode(Some(5)).apply_all(&mut pool, &mut rng);

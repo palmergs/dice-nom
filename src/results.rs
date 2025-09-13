@@ -37,7 +37,7 @@ impl Die {
     /// ```
     /// use dice_nom::results::Die;
     /// use rand::prelude::*;
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     /// let (dice, value) = Die::roll(1000, &mut rng);
     /// assert_eq!(dice.len(), 3);
     /// assert!(value > 0);
@@ -155,7 +155,7 @@ impl Die {
             let mut n = range;
             loop {
                 // 0 indexed
-                let rolled = rng.gen_range(0..10);
+                let rolled = rng.random_range(0..10);
 
                 // multiply ny next lower order
                 n = n / 10;
@@ -172,7 +172,7 @@ impl Die {
             }
         } else if range == die {
             // simple dice
-            let rolled = rng.gen_range(0..die) + 1;
+            let rolled = rng.random_range(0..die) + 1;
             dice.push(Die {
                 rolled: rolled,
                 die,
@@ -181,7 +181,7 @@ impl Die {
         } else if range < die {
             // "odd" dice
             loop {
-                let rolled = rng.gen_range(0..die) + 1;
+                let rolled = rng.random_range(0..die) + 1;
                 if rolled > range {
                     dice.push(Die {
                         rolled,
@@ -309,7 +309,7 @@ impl Value {
     /// ```
     /// use dice_nom::results::{ Value, Die };
     /// use rand::prelude::*;
-    /// let mut rng = rand::thread_rng();
+    /// let mut rng = rand::rng();
     /// let val = Value::random(6, false, &mut rng);
     /// assert_eq!(val.range, 6);
     /// assert!(val.value >= 1);

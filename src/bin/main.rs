@@ -67,14 +67,14 @@ fn main() {
 }
 
 fn display_results(g: &Generator, n: u32) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     for _ in 0..n {
         println!("{}: {}", g, g.generate(&mut rng));
     }
 }
 
 fn display_json(g: &Generator, n: u32) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut results_array = Vec::new();
     for _ in 0..n {
         results_array.push(g.generate(&mut rng));
@@ -87,14 +87,14 @@ fn display_json(g: &Generator, n: u32) {
 }
 
 fn display_value(g: &Generator, n: u32) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     for _ in 0..n {
         println!("{}", g.generate(&mut rng).sum());
     }
 }
 
 fn display_value_json(g: &Generator, n: u32) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut values = Vec::new();
     for _ in 0..n {
         values.push(g.generate(&mut rng).sum());
@@ -147,7 +147,7 @@ impl Histo {
             max_cnt: 0,
             map: BTreeMap::new(),
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for _ in 0..count {
             let v = g.generate(&mut rng).sum();
             if v < histo.min {
