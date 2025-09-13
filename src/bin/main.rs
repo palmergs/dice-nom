@@ -177,14 +177,17 @@ fn display_chart_json(g: &Generator, num: u32) {
     let histo = Histo::build(g, num);
 
     let mut chart_data = Vec::new();
+    let mut total = 100.0;
     for k in histo.min..=histo.max {
         let count = histo.map.get(&k).unwrap_or(&0);
         let percentage = (*count as f64 / num as f64) * 100.0;
         chart_data.push(serde_json::json!({
             "value": k,
             "count": count,
-            "percentage": percentage
+            "percentage": percentage,
+            "total": total,
         }));
+        total = total - percentage;
     }
 
     let json = serde_json::to_string(&chart_data);
