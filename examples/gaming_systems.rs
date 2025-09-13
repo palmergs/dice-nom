@@ -1,0 +1,194 @@
+//! Gaming system examples for the dice-nom library.
+//!
+//! This example demonstrates how to use dice-nom for various tabletop RPG systems,
+//! showing real-world applications of the library's features.
+
+use dice_nom::parse;
+use rand::prelude::*;
+
+fn main() {
+    let mut rng = rand::rng();
+
+    println!("=== D&D 5th Edition Examples ===");
+
+    // Character creation - roll stats
+    println!("Rolling ability scores (4d6, drop lowest):");
+    for ability in ["STR", "DEX", "CON", "INT", "WIS", "CHA"] {
+        if let Ok(generator) = parse("4d6^3") {
+            let result = generator.generate(&mut rng);
+            println!("{}: {}", ability, result);
+        }
+    }
+
+    // Combat rolls
+    println!("\nCombat examples:");
+    let combat_rolls = vec![
+        ("Attack roll (d20+5)", "1d20+5"),
+        ("Damage (longsword)", "1d8+3"),
+        ("Sneak attack", "1d8+3+3d6"),
+        ("Fireball damage", "8d6"),
+        ("Healing potion", "2d4+2"),
+    ];
+
+    for (description, expr) in combat_rolls {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            println!("{}: {}", description, result);
+        }
+    }
+
+    // Advantage/Disadvantage
+    println!("\nAdvantage and Disadvantage:");
+    let adv_dis_rolls = vec![
+        ("Attack with Advantage", "1d20ADV+5"),
+        ("Stealth with Disadvantage", "1d20DIS+2"),
+    ];
+
+    for (description, expr) in adv_dis_rolls {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            println!("{}: {}", description, result);
+        }
+    }
+
+    println!("\n=== World of Darkness Examples ===");
+
+    // Success counting system
+    let wod_rolls = vec![
+        ("Dexterity + Athletics (6 dice)", "6d10[6]"),
+        ("Manipulation + Subterfuge (4 dice)", "4d10[6]"),
+        ("Intelligence + Academics (7 dice)", "7d10[6]"),
+    ];
+
+    for (description, expr) in wod_rolls {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            println!("{}: {} successes", description, result.lhs.hits());
+        }
+    }
+
+    println!("\n=== Shadowrun Examples ===");
+
+    // Edge cases and exploding dice
+    let shadowrun_rolls = vec![
+        ("Firearms skill test", "8d6[5]"),
+        ("Edge-enhanced roll", "8d6[5]**6"),
+        ("Damage resistance", "6d6[5]"),
+    ];
+
+    for (description, expr) in shadowrun_rolls {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            println!("{}: {} hits", description, result.lhs.hits());
+        }
+    }
+
+    println!("\n=== GURPS Examples ===");
+
+    // 3d6 roll-under system
+    let gurps_rolls = vec![
+        ("Skill check vs 12", "3d6 <= 12"),
+        ("Attribute check vs 14", "3d6 <= 14"),
+        ("Hard skill check vs 10", "3d6 <= 10"),
+    ];
+
+    for (description, expr) in gurps_rolls {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            let success = result.sum() == 1;
+            println!(
+                "{}: {} ({})",
+                description,
+                result.lhs.sum(),
+                if success { "Success" } else { "Failure" }
+            );
+        }
+    }
+
+    println!("\n=== Fate/Fudge Examples ===");
+
+    // Fudge dice simulation using d3 (1=-, 2=blank, 3=+)
+    println!("Fate dice (simulated with d3s where 1=-, 2=0, 3=+):");
+    for i in 1..=3 {
+        if let Ok(generator) = parse("4d3--2") {
+            let result = generator.generate(&mut rng);
+            let fate_result = result.sum();
+            println!(
+                "Roll {}: {} ({})",
+                i,
+                result,
+                match fate_result {
+                    -4..=-3 => "Terrible",
+                    -2..=-1 => "Poor",
+                    0 => "Mediocre",
+                    1..=2 => "Good",
+                    3..=4 => "Great",
+                    _ => "Exceptional",
+                }
+            );
+        }
+    }
+
+    println!("\n=== Savage Worlds Examples ===");
+
+    // Exploding dice and Aces
+    let savage_worlds_rolls = vec![
+        ("Fighting with d8", "1d8!"),
+        ("Shooting with d10", "1d10!"),
+        ("Wild die + trait", "1d6! + 1d8!"),
+        ("Damage with d6+2", "1d6!+2"),
+    ];
+
+    for (description, expr) in savage_worlds_rolls {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            let total = result.sum();
+            println!(
+                "{}: {} ({})",
+                description,
+                result,
+                if total >= 4 { "Success" } else { "Failure" }
+            );
+        }
+    }
+
+    println!("\n=== Custom Gaming System ===");
+
+    // Example of a custom system with complex rules
+    println!("Custom system: Roll 5d6, count 4+ as successes, but 1s cancel successes");
+
+    // This would need custom logic, but we can approximate
+    if let Ok(generator) = parse("5d6") {
+        let result = generator.generate(&mut rng);
+        let values = result.lhs.values();
+        let successes = values.iter().filter_map(|&v| v).filter(|&v| v >= 4).count();
+        let ones = values.iter().filter_map(|&v| v).filter(|&v| v == 1).count();
+        let final_successes = if successes > ones {
+            successes - ones
+        } else {
+            0
+        };
+
+        println!(
+            "Roll: {} -> {} successes ({} 4+, {} 1s)",
+            result.lhs, final_successes, successes, ones
+        );
+    }
+
+    println!("\n=== Stress Testing Complex Expressions ===");
+
+    // Complex multi-part expressions
+    let complex_expressions = vec![
+        ("Massive spell damage", "20d6+10d8+5d4"),
+        ("Epic contest", "10d10[6] > 8d12[7]"),
+        ("Exploding pool with mod", "6d8**+3d6+5"),
+        ("Advantage with bonus", "2d20ADV+1d4+5"),
+    ];
+
+    for (description, expr) in complex_expressions {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            println!("{}: {}", description, result);
+        }
+    }
+}

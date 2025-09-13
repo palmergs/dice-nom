@@ -1,13 +1,44 @@
+//! Parsers for dice notation expressions using the nom parsing library.
+//!
+//! This module contains all the parsing logic for converting string representations
+//! of dice expressions into generator structures. The parsers are built using the
+//! nom parser combinator library and can handle complex nested expressions.
+//!
+//! # Parser Hierarchy
+//!
+//! The parsers are organized in a hierarchical structure:
+//!
+//! 1. [`generator_parser`] - Top-level parser for complete expressions with comparisons
+//! 2. [`succ_gen_parser`] - Parses success-based expressions
+//! 3. [`hits_parser`] - Parses hit-counting expressions with target operations
+//! 4. [`expr_parser`] - Parses arithmetic expressions with multiple terms
+//! 5. [`term_parser`] - Parses individual terms (pools or constants)
+//! 6. Various operation parsers for modifiers and operators
+//!
+//! # Examples
+//!
+//! ```rust
+//! use dice_nom::parsers::generator_parser;
+//!
+//! // Parse a simple dice expression
+//! let result = generator_parser("3d6+4");
+//! assert!(result.is_ok());
+//!
+//! // Parse a complex expression with exploding dice and target
+//! let result = generator_parser("4d6!![4] > 2d8+1");
+//! assert!(result.is_ok());
+//! ```
+
 extern crate nom;
 
 use nom::{
-    IResult, Parser,
     branch::alt,
     bytes::complete::{is_a, tag},
     character::complete::{char, digit0, digit1, space0},
     combinator::opt,
     multi::fold_many1,
     sequence::{delimited, preceded, separated_pair},
+    IResult, Parser,
 };
 
 use super::generators::{
@@ -15,9 +46,31 @@ use super::generators::{
     PoolGenerator, PoolOp, SuccGenerator, SuccessOp, TargetOp, TermGenerator,
 };
 
-/// generator_parser is the top level parser and builds a generator
-/// that can compare the relative values of two sub expressions.
+/// Parses the top-level generator that can compare two sub-expressions.
 ///
+/// This is the entry point for parsing complete dice expressions, including
+/// comparisons between two sides. It handles expressions like "3d6 > 2d8+1".
+///
+/// # Arguments
+///
+/// * `input` - The string slice to parse
+///
+/// # Returns
+///
+/// Returns a `Result` containing the remaining input and the parsed `Generator`,
+/// or a nom parsing error.
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::parsers::generator_parser;
+///
+/// let (remaining, gen) = generator_parser("3d6+4").unwrap();
+/// assert_eq!(remaining, "");
+///
+/// let (remaining, gen) = generator_parser("2d20 > 15").unwrap();
+/// assert_eq!(remaining, "");
+/// ```
 /// * Examples
 ///
 /// ```

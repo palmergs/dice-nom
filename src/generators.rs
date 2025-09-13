@@ -3,9 +3,34 @@ use rand::prelude::*;
 use std::cmp::Ordering;
 use std::fmt;
 
+/// The top-level generator that can represent complex dice expressions including comparisons.
+///
+/// A `Generator` consists of a success generator and an optional comparison operator to
+/// compare against another generator. This allows for expressions like "3d6 > 2d8+1".
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::parse;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+///
+/// // Simple expression without comparison
+/// let simple = parse("3d6+4").unwrap();
+/// let result = simple.generate(&mut rng);
+/// println!("Result: {}", result.sum());
+///
+/// // Comparison expression
+/// let contest = parse("3d6 > 2d8").unwrap();
+/// let result = contest.generate(&mut rng);
+/// println!("Contest: {}", result.sum()); // 1 if left wins, 0 otherwise
+/// ```
 #[derive(Debug, PartialEq)]
 pub struct Generator {
+    /// The primary success generator for the left side of any comparison
     pub succ: SuccGenerator,
+    /// Optional comparison operator for comparing against another generator
     pub op: Option<ComparisonOp>,
 }
 
@@ -100,13 +125,38 @@ impl Generator {
     }
 }
 
+/// Comparison operators for comparing two dice expressions.
+///
+/// Each variant contains the right-hand side generator to compare against.
+/// The comparison returns 1 for true, 0 for false, except CMP which returns
+/// -1, 0, or 1 for less than, equal, or greater than respectively.
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::parse;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+///
+/// // Greater than comparison
+/// let gt_test = parse("3d6 > 10").unwrap();
+/// let result = gt_test.generate(&mut rng);
+/// // result.sum() will be 1 if 3d6 > 10, otherwise 0
+/// ```
 #[derive(Debug, PartialEq)]
 pub enum ComparisonOp {
+    /// Greater than (>)
     GT(SuccGenerator),
+    /// Greater than or equal (>=)
     GE(SuccGenerator),
+    /// Less than (<)
     LT(SuccGenerator),
+    /// Less than or equal (<=)
     LE(SuccGenerator),
+    /// Equal (=)
     EQ(SuccGenerator),
+    /// Three-way comparison (<=>)
     CMP(SuccGenerator),
 }
 
@@ -123,9 +173,33 @@ impl fmt::Display for ComparisonOp {
     }
 }
 
+/// Generator for success-based dice systems.
+///
+/// A success generator evaluates hits from a dice pool and applies success thresholds.
+/// This is commonly used in systems where you need to achieve a certain total to succeed,
+/// with additional successes for exceeding thresholds.
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::parse;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+///
+/// // Success if total >= 12
+/// let success_test = parse("3d6{12}").unwrap();
+/// let result = success_test.generate(&mut rng);
+///
+/// // Success levels: 1 success at 15, +1 for every 5 above
+/// let level_test = parse("2d10{15,5}").unwrap();
+/// let result = level_test.generate(&mut rng);
+/// ```
 #[derive(Debug, PartialEq)]
 pub struct SuccGenerator {
+    /// The hits generator that produces the base dice rolls
     pub hits: HitsGenerator,
+    /// Optional success operation for threshold-based success counting
     pub op: Option<SuccessOp>,
 }
 
@@ -359,10 +433,36 @@ impl TermGenerator {
     }
 }
 
+/// Generator for a pool of dice with optional operations.
+///
+/// This is the fundamental building block representing "XdY" notation, where X is the
+/// count of dice and Y is the range (number of sides). Optional operations can modify
+/// how the dice behave (exploding, advantage, etc.).
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::generators::PoolGenerator;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+///
+/// // Simple 3d6
+/// let basic = PoolGenerator { count: 3, range: 6, op: None };
+/// let result = basic.generate(&mut rng);
+///
+/// // Using the convenience function
+/// use dice_nom::roller;
+/// let exploding = roller(2, 8, Some("!"));
+/// let result = exploding.generate(&mut rng);
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub struct PoolGenerator {
+    /// Number of dice to roll
     pub count: i32,
+    /// Number of sides on each die (range 1 to this value)
     pub range: i32,
+    /// Optional operation to apply to the dice pool
     pub op: Option<PoolOp>,
 }
 
@@ -408,19 +508,53 @@ impl PoolGenerator {
     }
 }
 
+/// Operations that can be applied to dice pools.
+///
+/// These operations modify how dice behave after being rolled, such as exploding
+/// on maximum values, keeping only certain dice, or adding modifiers.
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::roller;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+///
+/// // Exploding dice - reroll on max, once per pool
+/// let exploding = roller(3, 6, Some("!"));
+///
+/// // Advantage - roll twice, keep higher
+/// let advantage = roller(1, 20, Some("ADV"));
+///
+/// // Keep highest 3 of 4 dice
+/// let drop_lowest = roller(4, 6, Some("^3"));
+/// ```
 #[derive(Debug, PartialEq, Clone)]
 pub enum PoolOp {
+    /// Explode: reroll if all dice are max (or >= threshold)
     Explode(Option<i32>),
+    /// Explode until: keep rerolling while all dice are max
     ExplodeUntil(Option<i32>),
+    /// Explode each: reroll each die that is max (or >= threshold)
     ExplodeEach(Option<i32>),
+    /// Explode each until: keep rerolling each die while it's max
     ExplodeEachUntil(Option<i32>),
+    /// Add the given value to each die
     AddEach(Option<i32>),
+    /// Subtract the given value from each die
     SubEach(Option<i32>),
+    /// Keep the middle N dice (drop highest and lowest)
     TakeMid(i32),
+    /// Keep the lowest N dice
     TakeLow(i32),
+    /// Keep the highest N dice
     TakeHigh(i32),
+    /// Roll twice, keep the lower result
     Disadvantage,
+    /// Roll twice, keep the higher result
     Advantage,
+    /// Keep the largest group of matching dice values
     BestGroup,
 }
 
@@ -476,7 +610,7 @@ impl fmt::Display for PoolOp {
             }
 
             PoolOp::AddEach(n) => {
-                if let Some(n) = *n {
+                if let Some(n) = n {
                     write!(f, "++{}", n)
                 } else {
                     write!(f, "++")
@@ -484,7 +618,7 @@ impl fmt::Display for PoolOp {
             }
 
             PoolOp::SubEach(n) => {
-                if let Some(n) = *n {
+                if let Some(n) = n {
                     write!(f, "--{}", n)
                 } else {
                     write!(f, "--")

@@ -2,6 +2,23 @@ use rand::Rng;
 use serde::Serialize;
 use std::fmt;
 
+/// Represents a single physical die roll.
+///
+/// A `Die` tracks both the physical value rolled and any calculated modifications.
+/// The `value` field may be `None` if the die was discarded (e.g., when rolling
+/// for non-standard ranges).
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::results::Die;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+/// let (dice, total) = Die::roll(6, &mut rng);
+/// assert_eq!(dice.len(), 1);
+/// assert!(total >= 1 && total <= 6);
+/// ```
 #[derive(Copy, Clone, Debug, PartialEq, Serialize)]
 pub struct Die {
     /// value on the physical die
@@ -204,6 +221,30 @@ impl Die {
     }
 }
 
+/// Represents a single rolled value or constant in a dice expression.
+///
+/// A `Value` can represent either a dice roll or a constant number, along with
+/// all the metadata about how it should be treated in calculations (kept/discarded,
+/// bonus dice, target hits, etc.).
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::results::Value;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+///
+/// // Create a random d6 roll
+/// let roll = Value::random(6, false, &mut rng);
+/// assert!(roll.sum() >= 1 && roll.sum() <= 6);
+/// assert!(!roll.is_const());
+///
+/// // Create a constant value
+/// let constant = Value::constant(5);
+/// assert_eq!(constant.sum(), 5);
+/// assert!(constant.is_const());
+/// ```
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Value {
     /// value of this roll (or constant) before modified
@@ -399,6 +440,29 @@ impl Value {
     }
 }
 
+/// A collection of dice roll values that can be manipulated as a group.
+///
+/// A `Pool` represents the result of rolling multiple dice or combining multiple
+/// values through arithmetic operations. It tracks individual values and can
+/// calculate various statistics like sum, count of hits, etc.
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::results::{Pool, Value};
+///
+/// let mut pool = Pool::new();
+/// // Note: In practice, pools are usually created by generators
+/// let values = vec![
+///     Value::d6(3),
+///     Value::d6(5),
+///     Value::d6(1),
+/// ];
+/// let pool = Pool::new_with_values(values);
+///
+/// assert_eq!(pool.count(), 3);
+/// assert_eq!(pool.sum(), 9);
+/// ```
 #[derive(Debug, Serialize)]
 pub struct Pool {
     pub values: Vec<Value>,
@@ -512,6 +576,27 @@ impl Pool {
     }
 }
 
+/// The final result of evaluating a dice expression.
+///
+/// `Results` contains the outcome of a complete dice expression evaluation,
+/// including the left-hand side pool, an optional right-hand side pool
+/// (for comparisons), and the final calculated value.
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::parse;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::thread_rng();
+/// let generator = parse("3d6+4").unwrap();
+/// let results = generator.generate(&mut rng);
+///
+/// println!("Left side: {}", results.lhs);
+/// println!("Final value: {}", results.sum());
+/// // For simple expressions, rhs will be None
+/// assert!(results.rhs.is_none());
+/// ```
 #[derive(Serialize)]
 pub struct Results {
     pub lhs: Pool,

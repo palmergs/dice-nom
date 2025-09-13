@@ -2,9 +2,19 @@
 name = "dice-nom"
 version = "0.4.0"
 authors = ["Galen Palmer <palmergs@gmail.com>"]
-edition = "2024"
+edition = "2021"
 description = "A library that utilizes the nom parser for randomly generating numbers to support role-playing games."
 license-file = "LICENSE"
+repository = "https://github.com/palmergs/dice-nom"
+documentation = "https://docs.rs/dice-nom"
+homepage = "https://github.com/palmergs/dice-nom"
+readme = "README.md"
+keywords = ["dice", "rpg", "parser", "random", "gaming"]
+categories = ["games", "parsing", "command-line-utilities"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [[bin]]
 name = "roll"
