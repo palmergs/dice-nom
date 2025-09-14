@@ -4,7 +4,6 @@
 //! showing real-world applications of the library's features.
 
 use dice_nom::parse;
-use rand::prelude::*;
 
 fn main() {
     let mut rng = rand::rng();
@@ -72,7 +71,7 @@ fn main() {
     // Edge cases and exploding dice
     let shadowrun_rolls = vec![
         ("Firearms skill test", "8d6[5]"),
-        ("Edge-enhanced roll", "8d6[5]**6"),
+        ("Edge-enhanced roll", "8d6**[5]"),
         ("Damage resistance", "6d6[5]"),
     ];
 
@@ -149,46 +148,6 @@ fn main() {
                 result,
                 if total >= 4 { "Success" } else { "Failure" }
             );
-        }
-    }
-
-    println!("\n=== Custom Gaming System ===");
-
-    // Example of a custom system with complex rules
-    println!("Custom system: Roll 5d6, count 4+ as successes, but 1s cancel successes");
-
-    // This would need custom logic, but we can approximate
-    if let Ok(generator) = parse("5d6") {
-        let result = generator.generate(&mut rng);
-        let values = result.lhs.values();
-        let successes = values.iter().filter_map(|&v| v).filter(|&v| v >= 4).count();
-        let ones = values.iter().filter_map(|&v| v).filter(|&v| v == 1).count();
-        let final_successes = if successes > ones {
-            successes - ones
-        } else {
-            0
-        };
-
-        println!(
-            "Roll: {} -> {} successes ({} 4+, {} 1s)",
-            result.lhs, final_successes, successes, ones
-        );
-    }
-
-    println!("\n=== Stress Testing Complex Expressions ===");
-
-    // Complex multi-part expressions
-    let complex_expressions = vec![
-        ("Massive spell damage", "20d6+10d8+5d4"),
-        ("Epic contest", "10d10[6] > 8d12[7]"),
-        ("Exploding pool with mod", "6d8**+3d6+5"),
-        ("Advantage with bonus", "2d20ADV+1d4+5"),
-    ];
-
-    for (description, expr) in complex_expressions {
-        if let Ok(generator) = parse(expr) {
-            let result = generator.generate(&mut rng);
-            println!("{}: {}", description, result);
         }
     }
 }

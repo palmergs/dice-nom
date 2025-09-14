@@ -59,6 +59,11 @@ impl Die {
     /// assert_eq!(dice.len(), 3);
     /// assert!(value > 0);
     /// assert!(value <= 1000);
+    ///
+    /// let (dice, value) = Die::roll(25, &mut rng);
+    /// assert_eq!(dice.len(), 2);
+    /// assert!(value > 0);
+    /// assert!(value <= 25);
     /// ```
     pub fn roll<R: Rng + ?Sized>(range: i32, rng: &mut R) -> (Vec<Die>, i32) {
         let mut dice = Vec::new();
@@ -78,7 +83,11 @@ impl Die {
             }
             5 => {
                 Die::roll_for_value(10, 10, &mut dice, rng);
-                value = (Die::value(&dice) as f64 / 2.0).ceil() as i32;
+                value = Die::value(&dice);
+                if value == 0 {
+                    value = 10;
+                }
+                value = (value as f64 / 2.0).ceil() as i32;
             }
             6 => {
                 Die::roll_for_value(6, 6, &mut dice, rng);

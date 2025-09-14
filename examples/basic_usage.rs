@@ -4,7 +4,6 @@
 //! including simple dice rolling, complex expressions, and various operators.
 
 use dice_nom::{parse, roller};
-use rand::prelude::*;
 
 fn main() {
     let mut rng = rand::rng();
