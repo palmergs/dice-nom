@@ -14,7 +14,7 @@ use std::fmt;
 /// use dice_nom::parse;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 ///
 /// // Simple expression without comparison
 /// let simple = parse("3d6+4").unwrap();
@@ -29,14 +29,14 @@ use std::fmt;
 #[derive(Debug, PartialEq)]
 pub struct Generator {
     /// The primary success generator for the left side of any comparison
-    pub succ: SuccGenerator,
+    pub mul_div: MulDivGenerator,
     /// Optional comparison operator for comparing against another generator
     pub op: Option<ComparisonOp>,
 }
 
 impl fmt::Display for Generator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.succ)?;
+        write!(f, "{}", self.mul_div)?;
         if let Some(op) = &self.op {
             write!(f, " {}", op)?;
         }
@@ -54,29 +54,32 @@ impl Generator {
     /// use dice_nom::results::*;
     /// use rand::prelude::*;
     /// let g = Generator{
-    ///     succ: SuccGenerator{
-    ///         hits: HitsGenerator{
-    ///             expr: ExprGenerator{
-    ///                 terms: vec![ArithTermGenerator{
-    ///                     op: ArithOp::ImplicitAdd,
-    ///                     term: TermGenerator::Pool(PoolGenerator{
-    ///                         count: 12,
-    ///                         range: 6,
-    ///                         op: None
-    ///                     })
-    ///                 }]
+    ///     mul_div: MulDivGenerator{
+    ///         succ: SuccGenerator{
+    ///             hits: HitsGenerator{
+    ///                 expr: ExprGenerator{
+    ///                     terms: vec![ArithTermGenerator{
+    ///                         op: ArithOp::ImplicitAdd,
+    ///                         term: TermGenerator::Pool(PoolGenerator{
+    ///                             count: 12,
+    ///                             range: 6,
+    ///                             op: None
+    ///                         })
+    ///                     }]
+    ///                 },
+    ///                 op: None
     ///             },
     ///             op: None
     ///         },
     ///         op: None
     ///     },
-    ///     op: None
+    ///     op: None,
     /// };
     /// let mut rng = rand::rng();
     /// let pool = g.generate(&mut rng);
     /// ```
     pub fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> Results {
-        let lhs = self.succ.generate(rng);
+        let lhs = self.mul_div.generate(rng);
         let (rhs, value) = match &self.op {
             Some(op) => match op {
                 ComparisonOp::GT(rhs) => {
@@ -137,12 +140,12 @@ impl Generator {
 /// use dice_nom::parse;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 ///
 /// // Greater than comparison
-/// let gt_test = parse("3d6 > 10").unwrap();
+/// let gt_test = parse("2d6+6x5").unwrap();
 /// let result = gt_test.generate(&mut rng);
-/// // result.sum() will be 1 if 3d6 > 10, otherwise 0
+/// assert!(result.sum() >= 40);
 /// ```
 #[derive(Debug, PartialEq)]
 pub enum ComparisonOp {
@@ -173,6 +176,79 @@ impl fmt::Display for ComparisonOp {
     }
 }
 
+/// Multiplication operators for multiplying simple values
+///
+/// Each variant contains the right-hand side generator to compare against.
+/// The comparison returns 1 for true, 0 for false, except CMP which returns
+/// -1, 0, or 1 for less than, equal, or greater than respectively.
+///
+/// # Examples
+///
+/// ```rust
+/// use dice_nom::parse;
+/// use rand::prelude::*;
+///
+/// let mut rng = rand::rng();
+///
+/// // Greater than comparison
+/// let gt_test = parse("3d6 > 10").unwrap();
+/// let result = gt_test.generate(&mut rng);
+/// // result.sum() will be 1 if 3d6 > 10, otherwise 0
+/// ```
+#[derive(Debug, PartialEq, Clone)]
+pub enum MulDivOp {
+    Mul(i32),
+    Div(i32),
+}
+
+impl fmt::Display for MulDivOp {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MulDivOp::Mul(n) => write!(f, " x {}", n),
+            MulDivOp::Div(n) => write!(f, " / {}", n),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct MulDivGenerator {
+    /// The primary success generator for the left side of any comparison
+    pub succ: SuccGenerator,
+    /// Optional multiplication or division operator for comparing against another generator
+    pub op: Option<MulDivOp>,
+}
+
+impl fmt::Display for MulDivGenerator {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.succ)?;
+        if let Some(op) = &self.op {
+            write!(f, "{}", op)?;
+        }
+        write!(f, "")
+    }
+}
+
+impl MulDivGenerator {
+    pub fn generate<R: Rng + ?Sized>(&self, rng: &mut R) -> Pool {
+        let mut pool = self.succ.generate(rng);
+        match &self.op {
+            Some(op) => match op {
+                MulDivOp::Mul(n) => {
+                    let total = pool.sum();
+                    pool.set_total(total * n);
+                    pool
+                }
+                MulDivOp::Div(n) => {
+                    let total = pool.sum();
+                    pool.set_total(total / n);
+                    pool
+                }
+            },
+            None => pool,
+        }
+    }
+}
+
 /// Generator for success-based dice systems.
 ///
 /// A success generator evaluates hits from a dice pool and applies success thresholds.
@@ -185,7 +261,7 @@ impl fmt::Display for ComparisonOp {
 /// use dice_nom::parse;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 ///
 /// // Success if total >= 12
 /// let success_test = parse("3d6{12}").unwrap();
@@ -445,7 +521,7 @@ impl TermGenerator {
 /// use dice_nom::generators::PoolGenerator;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 ///
 /// // Simple 3d6
 /// let basic = PoolGenerator { count: 3, range: 6, op: None };
@@ -519,7 +595,7 @@ impl PoolGenerator {
 /// use dice_nom::roller;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 ///
 /// // Exploding dice - reroll on max, once per pool
 /// let exploding = roller(3, 6, Some("!"));

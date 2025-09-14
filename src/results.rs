@@ -14,7 +14,7 @@ use std::fmt;
 /// use dice_nom::results::Die;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 /// let (dice, total) = Die::roll(6, &mut rng);
 /// assert_eq!(dice.len(), 1);
 /// assert!(total >= 1 && total <= 6);
@@ -242,7 +242,7 @@ impl Die {
 /// use dice_nom::results::Value;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 ///
 /// // Create a random d6 roll
 /// let roll = Value::random(6, false, &mut rng);
@@ -597,7 +597,7 @@ impl Pool {
 /// use dice_nom::parse;
 /// use rand::prelude::*;
 ///
-/// let mut rng = rand::thread_rng();
+/// let mut rng = rand::rng();
 /// let generator = parse("3d6+4").unwrap();
 /// let results = generator.generate(&mut rng);
 ///

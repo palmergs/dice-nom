@@ -43,7 +43,8 @@ use nom::{
 
 use super::generators::{
     ArithOp, ArithTermGenerator, ComparisonOp, ExprGenerator, Generator, HitsGenerator,
-    PoolGenerator, PoolOp, SuccGenerator, SuccessOp, TargetOp, TermGenerator,
+    MulDivGenerator, MulDivOp, PoolGenerator, PoolOp, SuccGenerator, SuccessOp, TargetOp,
+    TermGenerator,
 };
 
 /// Parses the top-level generator that can compare two sub-expressions.
@@ -104,8 +105,15 @@ use super::generators::{
 /// )));
 /// ```
 pub fn generator_parser(input: &str) -> IResult<&str, Generator> {
-    match (succ_gen_parser, opt(comparison_op_parser)).parse(input) {
-        Ok((input, (succ, op))) => Ok((input, Generator { succ, op })),
+    match (mul_div_parser, opt(comparison_op_parser)).parse(input) {
+        Ok((input, (mul_div, op))) => Ok((input, Generator { mul_div, op })),
+        Err(e) => Err(e),
+    }
+}
+
+pub fn mul_div_parser(input: &str) -> IResult<&str, MulDivGenerator> {
+    match (succ_gen_parser, opt(mul_div_op_parser)).parse(input) {
+        Ok((input, (succ, op))) => Ok((input, MulDivGenerator { succ, op })),
         Err(e) => Err(e),
     }
 }
@@ -289,9 +297,17 @@ fn pool_parser(input: &str) -> IResult<&str, TermGenerator> {
     match (opt(digit1), is_a("dD"), range_parser, opt(pool_op_parser)).parse(input) {
         Ok((input, (count, _, range, op))) => {
             let count = match count {
-                Some(chars) => chars.parse::<i32>().unwrap(),
+                Some(chars) => {
+                    let n = chars.parse::<i32>().unwrap();
+                    if n > 100 {
+                        100
+                    } else {
+                        n
+                    }
+                }
                 None => 1,
             };
+
             Ok((
                 input,
                 TermGenerator::Pool(PoolGenerator { count, range, op }),
@@ -321,12 +337,12 @@ pub fn range_parser(input: &str) -> IResult<&str, i32> {
                 let base = 10i32;
                 let exp = chars.len() as u32;
                 let n = match base.checked_pow(exp) {
-                    Some(n) => 10 * n,
+                    Some(n) => clamp(10 * n, 100, 10000),
                     None => 100,
                 };
                 Ok((input, n))
             } else {
-                Ok((input, chars.parse::<i32>().unwrap()))
+                Ok((input, clamp(chars.parse::<i32>().unwrap(), 1, 2000)))
             }
         }
         Err(e) => Err(e),
@@ -335,14 +351,20 @@ pub fn range_parser(input: &str) -> IResult<&str, i32> {
 
 fn tgt_high_parser(input: &str) -> IResult<&str, TargetOp> {
     match delimited((space0, char('['), space0), digit1, (space0, char(']'))).parse(input) {
-        Ok((input, chars)) => Ok((input, TargetOp::TargetHigh(chars.parse::<i32>().unwrap()))),
+        Ok((input, chars)) => Ok((
+            input,
+            TargetOp::TargetHigh(clamp(chars.parse::<i32>().unwrap(), 1, 1000)),
+        )),
         Err(e) => Err(e),
     }
 }
 
 fn tgt_low_parser(input: &str) -> IResult<&str, TargetOp> {
     match delimited((space0, char('('), space0), digit1, (space0, char(')'))).parse(input) {
-        Ok((input, chars)) => Ok((input, TargetOp::TargetLow(chars.parse::<i32>().unwrap()))),
+        Ok((input, chars)) => Ok((
+            input,
+            TargetOp::TargetLow(clamp(chars.parse::<i32>().unwrap(), 1, 1000)),
+        )),
         Err(e) => Err(e),
     }
 }
@@ -375,7 +397,10 @@ pub fn tgt_op_parser(input: &str) -> IResult<&str, TargetOp> {
 /// ```
 pub fn succ_op_parser(input: &str) -> IResult<&str, SuccessOp> {
     match delimited((space0, char('{'), space0), digit1, (space0, char('}'))).parse(input) {
-        Ok((input, chars)) => Ok((input, SuccessOp::TargetSucc(chars.parse::<i32>().unwrap()))),
+        Ok((input, chars)) => Ok((
+            input,
+            SuccessOp::TargetSucc(clamp(chars.parse::<i32>().unwrap(), 1, 1000)),
+        )),
         Err(e) => Err(e),
     }
 }
@@ -400,7 +425,10 @@ pub fn succ_next_op_parser(input: &str) -> IResult<&str, SuccessOp> {
     {
         Ok((input, (n, m))) => Ok((
             input,
-            SuccessOp::TargetSuccNext(n.parse::<i32>().unwrap(), m.parse::<i32>().unwrap()),
+            SuccessOp::TargetSuccNext(
+                clamp(n.parse::<i32>().unwrap(), 1, 1000),
+                clamp(m.parse::<i32>().unwrap(), 1, 1000),
+            ),
         )),
         Err(e) => Err(e),
     }
@@ -451,7 +479,7 @@ pub fn optional_num_parser(input: &str) -> IResult<&str, Option<i32>> {
     match (space0, digit0).parse(input) {
         Ok((input, (_, chars))) => {
             if !chars.is_empty() {
-                Ok((input, Some(chars.parse::<i32>().unwrap())))
+                Ok((input, Some(clamp(chars.parse::<i32>().unwrap(), 0, 1000))))
             } else {
                 Ok((input, None))
             }
@@ -556,5 +584,37 @@ fn comparison_op_parser(input: &str) -> IResult<&str, ComparisonOp> {
             _ => panic!("unexpected tag"),
         },
         Err(e) => Err(e),
+    }
+}
+
+fn mul_div_op_parser(input: &str) -> IResult<&str, MulDivOp> {
+    match alt((
+        (space0, tag("x"), space0, digit1),
+        (space0, tag("/"), space0, digit1),
+    ))
+    .parse(input)
+    {
+        Ok((input, (_, op, _, num))) => match op {
+            "x" => Ok((
+                input,
+                MulDivOp::Mul(clamp(num.parse::<i32>().unwrap(), 0, 100)),
+            )),
+            "/" => Ok((
+                input,
+                MulDivOp::Div(clamp(num.parse::<i32>().unwrap(), 1, 100)),
+            )),
+            _ => panic!("unexpected op"),
+        },
+        Err(e) => Err(e),
+    }
+}
+
+fn clamp(n: i32, min: i32, max: i32) -> i32 {
+    if n < min {
+        min
+    } else if n > max {
+        max
+    } else {
+        n
     }
 }

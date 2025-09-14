@@ -50,6 +50,29 @@ fn main() {
         }
     }
 
+    println!("\n=== Call of Cthulhu  ===");
+
+    // Character creation - roll stats
+    println!("Generate statistics:");
+    let character_stats = vec![
+        ("STR (Strength)", "3d6x5"),
+        ("CON (Constitution)", "3d6x5"),
+        ("SIZ (Size)", "2d6+6x5"),
+        ("DEX (Dexterity)", "3d6x5"),
+        ("APP (Appearance)", "3d6x5"),
+        ("INT (Intelligence)", "2d6+6x5"),
+        ("POW (Power)", "3d6x5"),
+        ("EDU (Education)", "2d6+6x5"),
+        ("Luck", "3d6x5"),
+    ];
+
+    for (description, expr) in character_stats {
+        if let Ok(generator) = parse(expr) {
+            let result = generator.generate(&mut rng);
+            println!("{}: {}", description, result);
+        }
+    }
+
     println!("\n=== World of Darkness Examples ===");
 
     // Success counting system

@@ -20,7 +20,7 @@
 //! use dice_nom::{parse, roller};
 //! use rand::prelude::*;
 //!
-//! let mut rng = rand::thread_rng();
+//! let mut rng = rand::rng();
 //!
 //! // Simple dice rolling
 //! let simple_roller = roller(2, 6, None);
@@ -67,7 +67,7 @@
 //! use dice_nom::parse;
 //! use rand::prelude::*;
 //!
-//! let mut rng = rand::thread_rng();
+//! let mut rng = rand::rng();
 //! let contest = parse("3d6 > 2d8+1").unwrap();
 //! let result = contest.generate(&mut rng);
 //! println!("Contest result: {}", result.sum()); // 1 if left wins, 0 if right wins
