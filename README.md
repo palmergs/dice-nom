@@ -1,6 +1,6 @@
 # Dice::nom
 
-Another dice generator to turn text representation of dice rolls into generators. The command line interface includes many common operators; exploding dice, target numbers, success levels, etc..
+Another dice generator to turn text representation of dice rolls into generators. Features a dice struct that represents the physical dice that would be rolled to get a given value. The command line interface includes many common operators; exploding dice, target numbers, success levels, etc..
 
 ## Dice Operators
 
@@ -21,6 +21,7 @@ Another dice generator to turn text representation of dice rolls into generators
 
 * `+` - Addition is assumed and can be ommited. `2d4 + 2d6` is equivalent to `2d4 2d6`.
 * `-` - Subtraction inverts the values of the dice rolled and applies to both target hits and sums. For example, the string `2d4 - 2d4[3]` returns the number of successes in the first pool minus the number of successes in the second pool.
+* `x` - Multiplication is only supported left to right and has the same precedence as addition. This allows for Call of Cthuhlu style values like `2d6 + 6 x 5` to be interpreted as `((2d6) + 6) x 5`.
 
 ## Target Operators
 
