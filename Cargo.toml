@@ -1,6 +1,6 @@
 [package]
 name = "dice-nom"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Galen Palmer <palmergs@gmail.com>"]
 edition = "2021"
 description = "A library that utilizes the nom parser for randomly generating numbers to support role-playing games."
