@@ -472,7 +472,7 @@ impl Value {
 /// assert_eq!(pool.count(), 3);
 /// assert_eq!(pool.sum(), 9);
 /// ```
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Pool {
     pub values: Vec<Value>,
     total: Option<i32>,
@@ -606,7 +606,7 @@ impl Pool {
 /// // For simple expressions, rhs will be None
 /// assert!(results.rhs.is_none());
 /// ```
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Results {
     pub lhs: Pool,
     pub rhs: Option<Pool>,

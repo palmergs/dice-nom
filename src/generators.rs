@@ -26,7 +26,7 @@ use std::fmt;
 /// let result = contest.generate(&mut rng);
 /// println!("Contest: {}", result.sum()); // 1 if left wins, 0 otherwise
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Generator {
     /// The primary success generator for the left side of any comparison
     pub mul_div: MulDivGenerator,
@@ -147,7 +147,7 @@ impl Generator {
 /// let result = gt_test.generate(&mut rng);
 /// assert!(result.sum() >= 40);
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ComparisonOp {
     /// Greater than (>)
     GT(SuccGenerator),
@@ -195,7 +195,7 @@ impl fmt::Display for ComparisonOp {
 /// let result = gt_test.generate(&mut rng);
 /// // result.sum() will be 1 if 3d6 > 10, otherwise 0
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum MulDivOp {
     Mul(i32),
     Div(i32),
@@ -210,7 +210,7 @@ impl fmt::Display for MulDivOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MulDivGenerator {
     /// The primary success generator for the left side of any comparison
     pub succ: SuccGenerator,
@@ -271,7 +271,7 @@ impl MulDivGenerator {
 /// let level_test = parse("2d10{15,5}").unwrap();
 /// let result = level_test.generate(&mut rng);
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SuccGenerator {
     /// The hits generator that produces the base dice rolls
     pub hits: HitsGenerator,
@@ -318,7 +318,7 @@ impl SuccGenerator {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SuccessOp {
     TargetSucc(i32),
     TargetSuccNext(i32, i32),
@@ -333,7 +333,7 @@ impl fmt::Display for SuccessOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct HitsGenerator {
     pub expr: ExprGenerator,
     pub op: Option<TargetOp>,
@@ -401,7 +401,7 @@ impl HitsGenerator {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TargetOp {
     TargetHigh(i32),
     TargetLow(i32),
@@ -416,7 +416,7 @@ impl fmt::Display for TargetOp {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ExprGenerator {
     pub terms: Vec<ArithTermGenerator>,
 }
@@ -441,7 +441,7 @@ impl ExprGenerator {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ArithOp {
     ImplicitAdd,
     Add,
@@ -606,7 +606,7 @@ impl PoolGenerator {
 /// // Keep highest 3 of 4 dice
 /// let drop_lowest = roller(4, 6, Some("^3"));
 /// ```
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum PoolOp {
     /// Explode: reroll if all dice are max (or >= threshold)
     Explode(Option<i32>),
